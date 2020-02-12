@@ -43,8 +43,15 @@ Arguments:
     neutral_col                   String denoting set of putatively neutral BCs
 ' -> doc
 
-run_args_parse <- function(debug_status) {
+#print(arguments)
 
+# -------------------- #
+# function definitions #
+# -------------------- #
+
+
+run_args_parse <- function(debug_status) {
+  
   if (debug_status == TRUE) {
     arguments <- list()
     arguments$use_iva     <- TRUE
@@ -63,11 +70,6 @@ run_args_parse <- function(debug_status) {
   return(arguments)
 }
 
-#print(arguments)
-
-# -------------------- #
-# function definitions #
-# -------------------- #
 
 OpenRead <- function(arg) {
   if (arg %in% c("-", "/dev/stdin")) {
