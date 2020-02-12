@@ -1,0 +1,4 @@
+"0","dcols2 <- grep('iva_s', names(dBFA2), value = T)"
+"0","dcols2 <- grep('_err', dcols2, invert = T, value = T)"
+"0","meta_cols <- names(dBFA2)[1:5] # define meta-data for BCs to capture"
+"0","dBFA2_2 <- dBFA2[,names(dBFA2) %in% c(meta_cols,d2cols)]"

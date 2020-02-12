@@ -1,0 +1,8 @@
+"0","rownames(subdat) <- subdat[,'BC']
+# now plot scatter:
+g3 <- ggplot(subdat, aes(x = s.home, y = round(t0.freq*384), col = s.home, size = t0.freq*384, group = BC)) + geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10)) + facet_wrap(~ SP)
+ggplotly(g3)
+"
+"2","We recommend that you use the dev version of ggplot2 with `ggplotly()`
+Install it with: `devtools::install_github('hadley/ggplot2')`
+"

@@ -1,0 +1,6 @@
+"0","fdr <- quantile(chis$t_chi, probs = c(0.95))"
+"0","#fdr <- cbind(sort(chis$t_chi),seq(1:length(chis$t_chi))/length(chis$t_chi))"
+"0","# find the 95% quantile of the Chisq with optimized df:"
+"0","chi95 <- qchisq(0.95, df = emp_df$estimate)"
+"0","t_sum_dist_p <- t_sum_dist_p + geom_vline(xintercept = fdr, col = ""midnightblue"") + geom_vline(xintercept = chi95, col = ""magenta"")"
+"0","t_sum_dist_p"

@@ -1,0 +1,3 @@
+"0","d4n <- d4[d4$Subpool.Environment == 'Ancestor_YPD_2N',]"
+"0","# calculate mean and sd (face value) of iva.s:"
+"0","ggplot(d4n, aes(x = iva.s)) + geom_density() + facet_wrap( ~ bfa.env, scales = ""free"") + theme_bw()"

@@ -1,0 +1,17 @@
+"0","```r
+JDFE1 <- JDFE[complete.cases(JDFE),]
+row.names(JDFE1) <- JDFE1[,'Index']
+JDFE1 <- JDFE1[complete.cases(JDFE1),]
+pc1 <- ggparcoord(data = JDFE1, columns = c(3:10), scale=\"globalminmax\", showPoints = F, groupColumn = 'Environment', alphaLines = 0.8) +
+  theme_bw() + 
+  theme(legend.position = \"right\", 
+        legend.text = element_text(size = 10), 
+        legend.spacing = unit(0.5,\"line\"), 
+        axis.text = element_text(size=8), 
+        axis.title.x = element_blank(), 
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
+  # scale_colour_manual(values = plasma(n = k+2)) + 
+    scale_colour_manual(values = colorRampPalette(brewer.pal(11,\"Set1\"))(length(unique(JDFE1$Environment)))) + 
+  guides(fill = guide_legend(ncol=2, bycol=TRUE)) + geom_hline(yintercept = 0, lty = 'dashed', col = 'gray50')
+ggplotly(pc1)
+```"

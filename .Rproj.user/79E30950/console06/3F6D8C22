@@ -1,0 +1,25 @@
+hap_mut_p1 <- ggplot() + 
+geom_bar(data = mut_t1[mut_t1$has_mutation==T,], aes(x = source, y = count, fill = factor(adapted)), stat = 'identity', position = position_dodge(0.5), alpha = 0.5) +
+  theme_pth1() + scale_fill_manual(values = c('gray40','dodgerblue'), name = 'adapted') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ylab("number of unique BCs with mutation data") + 
+  xlab("source environment") +
+  scale_y_continuous(limits = c(-3,60), breaks = seq(0,60,10)) +
+  annotate(geom = "text", label = paste0(mut_t3$all_adapted), x = mut_t3$source, y = -2, size = 2)
+]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]1337;ShellIntegrationVersion=5;shell=bash]0;~/Dropbox/PLT/analysis_PLT/PLT]133;C;]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT[?1034h]133;D;0]133;AMacintosh-29:PLT phumph$ ]133;Bhap_mut_p1 <- ggplot() + 
+bash: syntax error near unexpected token `('
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;Bgeom_bar(data = mut_t1[mut_t1$has_mutation==T,], aes(x  = source, y = count, fill = factor(adapted)), stat = 'identity', position = posi tion_dodge(0.5), alpha = 0.5) +
+bash: syntax error near unexpected token `data'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  theme_pth1() + scale_fill_manual(values = c('gray40', 'dodgerblue'), name = 'adapted') +
+bash: syntax error near unexpected token `+'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  theme(axis.text.x = element_text(angle = 90, hjust =  1, vjust = 0.5)) +
+bash: syntax error near unexpected token `axis.text.x'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  ylab("number of unique BCs with mutation data") + 
+bash: syntax error near unexpected token `"number of unique BCs with mutation data"'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  xlab("source environment") +
+bash: syntax error near unexpected token `"source environment"'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  scale_y_continuous(limits = c(-3,60), breaks = seq(0, 60,10)) +
+bash: syntax error near unexpected token `limits'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B  annotate(geom = "text", label = paste0(mut_t3$all_ada pted), x = mut_t3$source, y = -2, size = 2)
+bash: syntax error near unexpected token `geom'
+]133;C;]0;~/Dropbox/PLT/analysis_PLT/PLT]1337;RemoteHost=phumph@Macintosh-29.local]1337;CurrentDir=/Users/phumph/Dropbox/PLT/analysis_PLT/PLT]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B[K]133;D;258]133;AMacintosh-29:PLT phumph$ ]133;B[K]133;D;0]133;AMacintosh-29:PLT phumph$ ]133;B

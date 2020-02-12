@@ -1,0 +1,2 @@
+"0","dp1 <- ggplot(d2_drug[d2_drug$Subpool.Environment == 'Ancestor_YPD_2N',], aes(x = s_est, col = bfa.rep)) + geom_density() + facet_grid(bfa.env ~ Subpool.Environment) + theme_bw()"
+"0","dp1"

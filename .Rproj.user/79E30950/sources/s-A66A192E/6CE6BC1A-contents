@@ -1,0 +1,128 @@
+#! /usr/bin/Rscript
+# script to parse fitness data for haploids and spit out counts of those with mutation data
+# first we have to scrub out autodiploids, both adapted and non-adapted ones, and save this new file
+
+# last updated: 2018-OCT-16 by PTH
+
+library(here)
+library(ggplot2)
+library(reshape2)
+library(ggpubr)
+
+# load data that was output from adapted caller script:
+htsum2 <- read.csv(file = here("data/hBFA1_adapted_calls_20-APR-2018.csv"))
+
+# remove barcodes that are autodiploid:
+hap_ad_bcs <- read.csv(here("data/hap_all_autodips_2018-OCT-16.csv"))
+
+# remove all autodip barcodes
+htsum2 <- htsum2[!htsum2$Full.BC %in% hap_ad_bcs$Full.BC,]
+
+# calculate number of adapted clones per source:
+httt <- data.frame(table(htsum2$adapted,htsum2$Subpool.Environment)) %>% dplyr::arrange(desc(Var1),desc(Freq))
+
+# scrub levels that don't make sense; re-order:
+httt <- httt[!httt$Var2 %in% c('none','not_read'),]
+httt$Var2 <- factor(httt$Var2, levels = paste0(unique(httt$Var2)))
+
+# supply text annotations for percent adapted:
+httt2 <- reshape2::dcast(httt, Var2 ~ Var1, value.var = 'Freq')
+names(httt2) <- c('source','non_adapted','adapted')
+httt2 <- dplyr::mutate(httt2, perc = adapted / (adapted + non_adapted))
+
+# produce plot
+clone_counts_1N <- ggplot() + 
+  geom_bar(data = httt, aes(x = Var2, y = Freq, fill = Var1), stat = 'identity', position = position_dodge(0.5), alpha = 0.5) +
+  theme_pth1() + scale_fill_manual(values = c('gray40','dodgerblue'), name = 'adapted') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ylab("number of unique BCs with fitness data") + 
+  xlab("source environment") +
+  scale_y_continuous(limits = c(-20,300), breaks = seq(0,300,50)) +
+  annotate(geom = "text", label = paste0(round(httt2$perc,2)), x = httt2$source, y = -20, size = 2)
+
+# save:
+ggsave(filename = here("plt_figs/1N_adapted_clones_breakdown.pdf"), width = 4, height = 3.5)
+
+#### ADDING MUTATION DATA ####
+
+ma <- read.table(here("data/mutations/mutations_final_filter_alpha.txt"),F,'\t')
+ma2 <- read.table(here("data/mutations/mutations_IG_alpha.txt"),F,'\t')
+ma <- unique(rbind(ma[,c(1:2)],ma2[,c(1:2)])) # 402 diploid genomes
+
+# fix the way the barcodes are reported to jibe with fitness data:
+ma$Diverse.BC <- sapply(ma$V2, function(x) unlist(strsplit(paste0(x),'_'))[1])
+
+# look for Diverse.BC from mutation set in fitness BC set:
+# output breakdown in terms of source env:
+htsum2$mutation <- sapply(htsum2$Diverse.BC, function(x) paste0(x) %in% paste0(ma$Diverse.BC))
+
+# now look at mutation data to see how many actually have fitness data:
+ma$has_fitness <- sapply(ma$Diverse.BC, function(x) paste0(x) %in% paste0(htsum2$Diverse.BC))
+
+#### ASIDE: CHECKING WHERE BCS_WITH_MUTATIONS BUT NO FITNESS DATA ARE COMING FROM: ####
+
+# # dereplicate to count unique BCs with mutation data:
+# length(unique(ma$Diverse.BC[ma$has_fitness==TRUE])) # 197 total, out of:
+# length(unique(ma$Diverse.BC)) # 249; what happened to the other 52 genomes? Are these BCs for which fitness data is poor or incomplete?
+# 
+# # options: they are from hBFA2. Let's check:
+# ma_non_hits <- unique(ma$Diverse.BC[ma$has_fitness==FALSE])
+# 
+# table(ma_non_hits %in% hBFA1$Diverse.BC) # yep, but only 1..
+# table(ma_non_hits %in% hBFA2$Diverse.BC) # nope
+# table(ma_non_hits %in% dBFA2$Diverse.BC) # sanity check: not in diploid sets. Probably barcode is just wrong? Could correct this somehow.
+
+# Calculate edit distance from all unique BCs that are the union of hBFA1 and hBFA2:
+
+# install.packages("stringdist")
+# library(stringdist)
+# 
+# # convert to list objects for comparisons:
+# ma_non_hits_l <- lapply(split(ma_non_hits,ma_non_hits),function(x) utf8ToInt(x))
+# 
+# # do for all other barcodes as well:
+# other_bcs <- unique(paste0(hBFA1$Diverse.BC),hBFA2$Diverse.BC)
+# other_bcs_l <- lapply(split(other_bcs,other_bcs),function(x) utf8ToInt(x))
+# 
+# # calculate levenstein for all ma_non_hits:
+# str_dist1 <- seq_dist(ma_non_hits_l, other_bcs_l, method = 'lv')
+# 
+# hist(str_dist1, breaks = 15) # OK well there apparently aren't any with low distances. Not sure where these BCs are coming from.
+
+# ignoring these, let's make plots of mutations across source environments:
+
+#### back to the analysis at hand ####
+mut_t1 <- data.frame(table(htsum2$mutation,htsum2$Subpool.Environment,htsum2$adapted))
+names(mut_t1) <- c('has_mutation','source','adapted','count')
+
+# now re-arrange
+mut_t1 <- dplyr::filter(mut_t1, source %in% c('CLM_alpha','FLC4_alpha','GlyEtOH_alpha')) %>% arrange(desc(adapted),desc(count))
+mut_t1 <- droplevels(mut_t1)
+mut_t1$source <- factor(mut_t1$source, levels = rev(c('CLM_alpha','GlyEtOH_alpha','FLC4_alpha')))
+
+# generate annotations: proportion of adapted BCs with mutation data.
+mut_t2 <- reshape2::dcast(mut_t1, source + adapted ~ has_mutation, value.var = 'count')
+names(mut_t2)[3:4] <- c('no_mut','yes_mut')
+mut_t2$yes_mut[is.na(mut_t2$yes_mut)] <- 0
+mut_t3 <- mut_t2[mut_t2$adapted==1,]
+mut_t3$all_adapted <- round(mut_t3$yes_mut / (mut_t3$no_mut + mut_t3$yes_mut),2)
+
+mut_t3 <- mut_t3[mut_t3$source %in% mut_t1$source,]
+mut_t3$source <- factor(mut_t3$source, levels = rev(c('CLM_alpha','GlyEtOH_alpha','FLC4_alpha')))
+
+# also need to annotate: total number of genomes sequened with fitness data
+# need to plot has_mutation subset:
+hap_mut_p1 <- ggplot() + 
+geom_bar(data = mut_t1[mut_t1$has_mutation==T,], aes(x = source, y = count, fill = factor(adapted)), stat = 'identity', position = position_dodge(0.5), alpha = 0.5) +
+  theme_pth1() + scale_fill_manual(values = c('gray40','dodgerblue'), name = 'adapted') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ylab("number of unique BCs with mutation data") + 
+  xlab("source environment") +
+  scale_y_continuous(limits = c(-3,60), breaks = seq(0,60,10)) +
+  annotate(geom = "text", label = paste0(mut_t3$all_adapted), x = mut_t3$source, y = -2, size = 2)
+
+# save plot!
+ggsave(filename = here("plt_figs/1N_adapted_clones_and_mutations.pdf"), width = 2.2, height = 3.5)
+
+# exporting original barcode list now annotated with mutation yes/no:
+write.csv(htsum2, file = here("data/haps_fit_and_mut_2018-OCT-16.csv"), quote = F, row.names = F)

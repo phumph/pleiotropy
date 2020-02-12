@@ -1,0 +1,3 @@
+"0","g2 <- ggplot(res.full2, aes(x = N, y = mean.n.adapt, ymin = lower, ymax = upper, group = sp)) + geom_point() + geom_linerange() + geom_line() + facet_wrap(~ sp, scales = 'free') + theme_bw() + ggtitle('cutoffs are 2*sigma > mean(neut)')# + scale_x_continuous(limits = c(0,100))"
+"0","pdf(file = here('adaptive_sampling_2N_384.pdf'), width = 7, height = 5)"
+"0","print(g2)"

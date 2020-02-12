@@ -1,0 +1,5 @@
+"0","d4n2 <- d4n[complete.cases(d4n),]"
+"0","ggplot(d4n2, aes(x = bfa.env, y = iva.s, group = Full.BC, color = Which.Subpools)) + "
+"0","  geom_line() + "
+"0","  theme_bw() +"
+"0","  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))"
