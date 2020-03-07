@@ -13,7 +13,15 @@ OpenRead <- function(arg) {
   }
 }
 
-prep_fit_matrix <- function(dat, is_neutral = TRUE, means_only = FALSE, neutral_col, excludes, iva_s, gens) {
+prep_fit_matrix <- function(dat,
+                            is_neutral = FALSE,
+                            is_autodip = FALSE,
+                            means_only = FALSE,
+                            neutral_col,
+                            autodip_tag,
+                            excludes,
+                            iva_s,
+                            gens) {
 
   # take input counts file and generate list of 2 matrixes:
     # (n x k) matrix of k-variate mean vectors for n barcodes
@@ -25,49 +33,42 @@ prep_fit_matrix <- function(dat, is_neutral = TRUE, means_only = FALSE, neutral_
   focal_cols <- c(grep('\\.BC',   names(dat), value = T),
                   grep('Subpool', names(dat), value = T),
                   grep('\\.R[0-9]', names(dat), invert = T, value = T),
-                  grep(paste0(avg_type),  names(dat), value = T))
+                  grep(paste0(avg_type),  names(dat), value = T)) %>% unique()
 
   # focal_cols <- focal_cols[!grepl(paste0(unlist(excludes), collapse='|'), focal_cols)]
   focal_cols <- focal_cols[!grepl(excludes, focal_cols)]
-
   dat <- dat[ , names(dat) %in% focal_cols]
 
   # examine list of neutrals if flag present
-  if (is_neutral == TRUE) {
-    if (!is.null(neutral_col)) {
-      dat <-
-        dat %>%
-        dplyr::filter(Subpool.Environment == neutral_col)
-    } else {
-      stop("Please define neutral_col!")
-    }
+  if (is_neutral == TRUE && !is.null(neutral_col)) {
+    # filter to neutrals
+    dat <- dat[dat$Subpool.Environment == neutral_col, ]
+  }
+
+  # examine list of neutrals if flag present
+  if (is_autodip == TRUE && !is.null(autodip_tag)) {
+    # filter to autodips
+    dat <- dat[grepl(autodip_tag, dat$Which.Subpools), ]
   }
 
   row.names(dat) <- dat$Full.BC
-
+  
   # grab relevant fitness columns from input
   df_mat <-
     dat %>%
-    #dplyr::select(grep('iva_s$|iva_s_err$', names(df), value = T)) %>%
     dplyr::select(grep(paste0(fit_col,'$|',err_col,'$'), names(dat), value = T)) %>%
     as.matrix()
 
-  # now I can remove NA, Inf values:
   df_mat[is.infinite(df_mat)] <- NA
   df_mat <- df_mat[complete.cases(df_mat), ]
-
+  
   # split into means and sigmas:
   if (means_only == FALSE) {
-
     df_list <- list(means  = df_mat[, grep(paste0(fit_col,'$'), colnames(df_mat))] / gens,
                     sigmas = df_mat[, grep(paste0(err_col,'$'), colnames(df_mat))] / gens)
-
     return(df_list)
-
   } else if (means_only == TRUE) {
-
     means <- df_mat[, grep(paste0(fit_col,'$'), colnames(df_mat))] / gens
-
     return(means)
   }
 }

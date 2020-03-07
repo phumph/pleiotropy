@@ -15,7 +15,7 @@ suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(ggplot2)))
 suppressWarnings(suppressMessages(library(progress)))
 suppressWarnings(suppressMessages(library(docopt)))
-source(file.path('./adapted_functions.R'))
+source(file.path('./src/adapted_functions.R'))
 
 # ------------------------- #
 # setup command line inputs #
@@ -31,7 +31,7 @@ Options:
     -h --help                     Show this screen.
     -v --version                  Show version.
     -o --outdir=<outdir>          Output directory [default: ./]
-    -b --base_name=<base_name>   Base name for output file [default: tmp]
+    -b --base_name=<base_name>    Base name for output file [default: tmp]
     -u --use_iva                  Flag to determine whether to use inverse variance weighted avg or arithmentic avg [default: TRUE]
     -g --gens=<gens>              Number of generations per cycle (used to divide input fitness estimates) [default: 8]
     -c --cutoff=<pval>            P-value cutoff for outlier trimming [default: 0.05]
@@ -56,7 +56,7 @@ run_args_parse <- function(debug_status) {
     arguments$infile      <- "../data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv"
     arguments$outdir      <- "../data/fitness_data/fitness_calls"
     arguments$neutral_col <- 'Ancestor_YPD_2N'
-    arguments$base_name        <- 'dBFA2_cutoff-5'
+    arguments$base_name   <- 'dBFA2_cutoff-5'
     arguments$reps_iter   <- 1000
     arguments$reps_final  <- 1000
     arguments$exclude     <- 'CLM|FLC4|Stan'
@@ -71,7 +71,7 @@ run_args_parse <- function(debug_status) {
 main <- function(bfa_dat, arguments) {
 
   set.seed(12345)
-  
+
   # take bfa_dat
   # run it through name conversion
   cat("Preparing input file...")
@@ -82,7 +82,9 @@ main <- function(bfa_dat, arguments) {
                     excludes    = arguments$exclude,
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
-                    is_neutral  = TRUE)
+                    is_neutral  = TRUE,
+                    do_filter   = TRUE,
+                    means_only  = FALSE)
   cat("Done!\n")
   cat("Detecting outliers in neutral barcode set...")
 
@@ -103,10 +105,10 @@ main <- function(bfa_dat, arguments) {
   if (!dir.exists(file.path(arguments$outdir, arguments$base_name))) {
     dir.create(file.path(arguments$outdir, arguments$base_name))
   }
-  
+
   saveRDS(neutral_test_distn,
           file = file.path(arguments$outdir, arguments$base_name, 'neutral_test_distn.Rds'))
-  
+
   # save plot of distribution
   data.frame(distances = neutral_test_distn$distances) %>%
     ggplot() +
@@ -117,7 +119,7 @@ main <- function(bfa_dat, arguments) {
     geom_vline(xintercept = quantile(neutral_test_distn$distances, probs = 1 - as.double(arguments$cutoff)), col = 'darkorange') +
     ggtitle(paste0("Neutral D distn (", length(neutral_set)," BCs)\n", arguments$base_name, "\ncutoff = ", arguments$cutoff)) ->
     neutral_dist_plot
-  
+
   ggsave(neutral_dist_plot,
          filename = file.path(arguments$outdir, arguments$base_name, 'neutral_test_distn.png'),
          device = 'png',
@@ -125,9 +127,9 @@ main <- function(bfa_dat, arguments) {
          width = 5,
          height = 3.5,
          units = 'in')
-  
+
   cat("Done!\n")
-  
+
   cat("Determining adapted barcodes...")
   # flag input barcodes as adapted or not based on distance
   adapteds <-
@@ -137,8 +139,8 @@ main <- function(bfa_dat, arguments) {
                     gens        = as.double(arguments$gens),
                     is_neutral  = FALSE,
                     means_only  = TRUE) %>%
-    flag_adapteds(testing_distn = neutral_test_distn,
-                  cutoff        = as.double(arguments$cutoff))
+      flag_adapteds(testing_distn = neutral_test_distn,
+                    cutoff        = as.double(arguments$cutoff))
 
   cat("Done!\n")
 
@@ -179,14 +181,14 @@ dat <- read.table(infile,
                  sep = ',',
                  stringsAsFactors = F)
 
-res_out <- main(dat, arguments = arguments)
+res_out <- main(dat, arguments)
 
 # write
 if (!dir.exists(arguments$outdir)) {
   dir.create(arguments$outdir)
 }
 
-outfile_path <- file.path(arguments$outdir, paste0(arguments$base_name, '_adapteds_',Sys.Date(),'.csv'))
+outfile_path <- file.path(arguments$outdir, paste0(arguments$base_name, '_adapteds.csv'))
 
 cat(sprintf("Writing output file: %s\n", outfile_path))
 
