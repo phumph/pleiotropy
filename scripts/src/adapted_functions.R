@@ -52,7 +52,7 @@ prep_fit_matrix <- function(dat,
   }
 
   row.names(dat) <- dat$Full.BC
-  
+
   # grab relevant fitness columns from input
   df_mat <-
     dat %>%
@@ -61,7 +61,7 @@ prep_fit_matrix <- function(dat,
 
   df_mat[is.infinite(df_mat)] <- NA
   df_mat <- df_mat[complete.cases(df_mat), ]
-  
+
   # split into means and sigmas:
   if (means_only == FALSE) {
     df_list <- list(means  = df_mat[, grep(paste0(fit_col,'$'), colnames(df_mat))] / gens,

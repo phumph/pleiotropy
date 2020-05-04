@@ -147,7 +147,13 @@ table(vars_2x_filt$Strain)[table(vars_2x_filt$Strain)>1] %>% names() -> dup_stra
 ### Filtering based on sub-pool environment calls
 ###
 
-bc_cols <- c('Full.BC','Diverse.BC','Environment.BC','Total.Counts','Subpool.Environment','Which.Subpools','Putative.Environment')
+bc_cols <- c('Full.BC',
+  'Diverse.BC',
+  'Environment.BC',
+  'Total.Counts',
+  'Subpool.Environment',
+  'Which.Subpools',
+  'Putative.Environment')
 
 dplyr::bind_rows(
   dplyr::select(subpools_dbfa2, bc_cols),
@@ -192,7 +198,7 @@ all_vars$wgs_env[all_vars$wgs_env == 11] <- '02M_NaCl'
 all_vars$env_match <- mapply(function(x,y) grepl(x,y), x = all_vars$wgs_env, y = all_vars$Subpool.Environment)
 
 # exclude non-matching
-all_vars_matched <- 
+all_vars_matched <-
   all_vars %>%
   dplyr::filter(env_match == TRUE)
 
@@ -202,12 +208,12 @@ all_vars_matched <-
 
 variants <-
   variants %>%
-  dplyr::left_join(dplyr::select(all_vars_matched, Strain, Full.BC, Diverse.BC, Environment.BC),
-                   by = 'Strain')
-
+  dplyr::left_join(
+    dplyr::select(all_vars_matched, Strain, Full.BC, Diverse.BC, Environment.BC),
+    by = 'Strain')
 
 # filter out those without matches
-variants_bc <- 
+variants_bc <-
   variants %>%
   dplyr::filter(!is.na(Full.BC))
 

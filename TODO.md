@@ -2,14 +2,11 @@
 
 ## Before next update
 
-- [ ] Finish and run `call_adapteds.R`
-- [ ] Compile BCs via `combine_BCs_and_WGS.R`
-- [ ] Generate summary tables for lineage count
-  - [ ] adapted from each env
-  - [ ] WGS from each env
-  - [ ] overlap
-- [ ] Produce fitness plots of adapteds with and without WGS again
-  - [ ] bring back in prior scripts to produce these figures
+- [x] Finish and run `call_adapteds.R`
+- [x] Compile BCs via `combine_BCs_and_WGS.R`
+- [ ] Generate `t-SNE` cluster process
+- [ ] Generate summary tables and plots for lineage count by cluster
+- [ ] Map genotype to phenotype with mutual information
 
 ### Notes
 
@@ -41,7 +38,6 @@ Perhaps I need to compare output from average versus inverse-variance weighted a
 * re-calculate distribution with retained set
 * calculate z-scores for all non-neutral set barcodes
 * generate threshold for calling adapted
-
 
 ## Wednesday 13 November 2019
 
@@ -79,11 +75,5 @@ Ok so here is the plan:
 2. center and scale each component vector $x_{ij} \rightarrow z_{ij}$.
 3. calculate Mahalanobis distance of each component vector and the mean (which, to numerical error, should be all zeros).
 4. Compare distance of hold-out vector versus distribution of others; get p-value for the barcode.
-
-#### TODO items for `call_adapted.R`
-
-- [ ] Implement loop with cutoff criterion for thinning out neutral set via outlier identification
-- [ ] Implement way to avoid having to exclude all BCs with NA fitness values
-
 
 Check this site out in more detail: [https://rmflight.github.io/post/vignette-analysis/](https://rmflight.github.io/post/vignette-analysis/)

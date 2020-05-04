@@ -16,6 +16,7 @@ suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(docopt)))
 suppressWarnings(suppressMessages(library(knitr)))
 suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(ggplot2)))
 source(file.path('./src/adapted_functions.R'))
 
 # ------------- #
@@ -24,7 +25,7 @@ source(file.path('./src/adapted_functions.R'))
 
 # generate distance calculations
 distify_autodips <- function(autodips, all_others, cutoff) {
-  
+
   # calculate distance between each barcode and the set of autodip barcodes
   # sum the total Euclidean distance for each barcode
   # compare this distance for each BC in all_others
@@ -32,14 +33,14 @@ distify_autodips <- function(autodips, all_others, cutoff) {
   # This will generate an empirical distribution,
   # and by applying a cutoff we can determine where to assign all_other BCs
   # to the true autodiploid set.
-  
+
   # first calculate testing distribution
   autodip_bcs <- row.names(autodips)
   res <- data.frame(NULL)
   for (bc in seq_along(autodip_bcs)) {
     ad_tmp   <- autodips[-bc, ]
     focal_bc <- autodips[bc, ]
-    
+
     # calculate Euclidean distances
     dists <- apply(ad_tmp, 1, function(x) sqrt(sum(x - focal_bc)^2))
     res <- rbind(res,
@@ -47,13 +48,13 @@ distify_autodips <- function(autodips, all_others, cutoff) {
                             SQRT_SSED = sum(dists))
     )
   }
-  
+
   # now calculate distn for all others
   all_other_bcs <- row.names(all_others)
   res_others <- data.frame(NULL)
   for (bc in seq_along(all_other_bcs)) {
     focal_bc <- all_others[bc, ]
-    
+
     # calculate dist
     dists <- apply(autodips, 1, function(x) sqrt(sum(x - focal_bc)^2))
     res_others <- rbind(res_others,
@@ -61,27 +62,25 @@ distify_autodips <- function(autodips, all_others, cutoff) {
                                    SQRT_SSED = sum(dists))
     )
   }
-  
+
   res_tot <- rbind(data.frame(res, autodip = 1),
                    data.frame(res_others, autodip = 0))
-  
+
   return(res_tot)
 }
 
-
-
 assign_autodip_status <- function(autodip_dists, cutoff) {
-  
+
   # define sum SQRT_SSED dist cutoff value
   if (cutoff == 'max') {
     d_cutoff <- ceiling(max(autodip_dists$SQRT_SSED[autodip_dists$autodip==1]))
   } else if (is.numeric(cutoff)) {
     d_cutoff <- ceiling(quantile(autodip_dists$SQRT_SSED[autodip_dists$autodip==1], probs = 1 - cutoff)) %>% as.numeric()
   }
-  
+
   # apply cutoff to generate flags; retain barcodes to assign as autodips
   assigned_autodips <- autodip_dists$Full.BC[autodip_dists$autodip == 0 & autodip_dists$SQRT_SSED <= d_cutoff]
-  
+
   return(list(cutoff = d_cutoff,
               bcs = assigned_autodips)
          )
@@ -91,13 +90,13 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
 
   n_dp <- sum(autodip_dists$autodip)
   n_other <- nrow(autodip_dists) - n_dp
-  
+
   autodip_dists <-
     autodip_dists %>%
     dplyr::mutate(ad_flag = ifelse(SQRT_SSED <= cutoff, 1, 0))
 
   n_ad_flag <- sum(autodip_dists$ad_flag[autodip_dists$autodip == 0])
-  
+
   # make table
   tab_dat <-
     autodip_dists %>%
@@ -105,13 +104,13 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
     dplyr::group_by(Subpool.Environment) %>%
     dplyr::summarise(n_autodip_flags = sum(ad_flag)) %>%
     dplyr::arrange(desc(n_autodip_flags))
-  
+
   # output table
   tab_dat %>%
     kable(format = 'html') %>%
     kable_styling(bootstrap_options = c("striped", "condensed")) %>%
     writeLines(con = file.path(outdir, base_name, 'autodip_tally_by_env.html'))
-    
+
   # make plot
   autodip_dists %>%
     dplyr::mutate(autodip = ifelse(autodip == 1, 'AD+ BCs reference set','all other BCs')) %>%
@@ -125,10 +124,10 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
     geom_vline(xintercept = cutoff, col = 'gray60', lty = 2) +
     ggtitle(paste0("Autodip. D distn (", n_dp," reference BCs, ", n_other, " other BCs)\n", base_name, "\nDist cutoff = ", cutoff, "\nNum. BCs <= cutoff = ", n_ad_flag)) ->
     dist_plot_1
-    
+
   # output plot
   autodip_dists$Subpool.Environment <- factor(autodip_dists$Subpool.Environment, levels = tab_dat$Subpool.Environment)
-  
+
   autodip_dists %>%
     dplyr::filter(autodip == 0) %>%
     ggplot() +
@@ -140,7 +139,8 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
     geom_vline(xintercept = cutoff, col = 'gray60', lty = 2) ->
     dist_plot_2
 
-  ggpubr::ggarrange(plotlist = list(dist_plot_1,dist_plot_2), nrow = 2, align = 'hv',
+  suppressWarnings(
+    ggpubr::ggarrange(plotlist = list(dist_plot_1,dist_plot_2), nrow = 2, align = 'hv',
                     common.legend = T, heights = c(1,3),
                     labels= c('a','b')) %>%
     ggsave(filename = file.path(outdir, base_name, 'autodip_tally_plots.png'),
@@ -148,6 +148,7 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
            dpi = 300,
            width = 4.5,
            height = 9)
+  )
 }
 
 
@@ -159,7 +160,7 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
 
 Usage:
     filter_autodiploids.R [--help | --version]
-    filter_autodiploids.R [options] <infile> <neutral_col>
+    filter_autodiploids.R [options] <infile> <audodip_tag>
 
 Options:
     -h --help                     Show this screen.
@@ -169,8 +170,8 @@ Options:
     -u --use_iva                  Flag to determine whether to use inverse variance weighted avg or arithmentic avg [default: TRUE]
     -g --gens=<gens>              Number of generations per cycle (used to divide input fitness estimates) [default: 8]
     -c --cutoff=<pval>            P-value cutoff for outlier trimming [default: 0.05]
-    -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
-    
+    -e --exclude=<env>...         Grep-able string of environments to exclude
+
 Arguments:
     infile                        Input file containing fitness calls for BFA run.
     audodip_tag                   String denoting identifier for autodip lineages
@@ -181,11 +182,11 @@ Arguments:
 # -------------------- #
 
 run_args_parse <- function(debug_status) {
-  
+
   if (debug_status == TRUE) {
     arguments <- list()
     arguments$use_iva     <- TRUE
-    arguments$infile      <- "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds.csv"
+    arguments$infile      <- "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_2020-03-03.csv"
     arguments$outdir      <- "../data/fitness_data/fitness_calls"
     arguments$autodip_tag <- 'autodiploids'
     arguments$base_name   <- 'hBFA1_cutoff-5'
@@ -200,7 +201,8 @@ run_args_parse <- function(debug_status) {
 
 main <- function(dat, arguments) {
   
-  # filter input dataframe to prepare it for 
+  # filter input dataframe to prepare it for
+  cat(sprintf("Preparing fitness file %s...", arguments$infile))
   autodips <-
     dat %>%
     prep_fit_matrix(is_autodip  = TRUE,
@@ -209,7 +211,7 @@ main <- function(dat, arguments) {
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     means_only  = TRUE)
-  
+
   all_others <-
     dat %>%
     prep_fit_matrix(is_autodip  = FALSE,
@@ -218,17 +220,18 @@ main <- function(dat, arguments) {
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     means_only  = TRUE)
-  
+
   all_others <- all_others[!row.names(all_others) %in% row.names(autodips), ]
-  
+  cat("Done!\n")
+  cat("Flagging autodiploid lineages...")
   autodip_dists <- distify_autodips(autodips   = autodips,
                                     all_others = all_others)
-  
+
   # now I need to consider the environment for some of these BCs
   # which have on-the-fence distances.
   # those from same Subpool.Env have a higher chance of actually being related
   # if they're not from the ancestral group.
-  
+
   # need to break this out by subpool.environment
   suppressWarnings(
     autodip_dists %>%
@@ -243,21 +246,24 @@ main <- function(dat, arguments) {
   #   geom_histogram(aes(x = SQRT_SSED, fill = factor(autodip)), bins = 50) +
   #   facet_wrap(~Subpool.Environment) +
   #   theme_bw()
-  
+
   # this function will apply a cutoff rule to flag non-reference BCs to autodip class
   assigned_autodip_output <- assign_autodip_status(autodip_dists, cutoff = arguments$cutoff)
+  cat("Done!\n")
+  
+  cat(sprintf("Generating plots for output in %s...", arguments$outdir))
   
   # plot for output
   plot_autodip_status(autodip_dists,
                       cutoff    = assigned_autodip_output$cutoff,
                       outdir    = arguments$outdir,
                       base_name = arguments$base_name)
-  
+
   # generate flags for original data and return
   dat$autodip <- FALSE
   dat$autodip[grepl(arguments$autodip_tag, dat$Which.Subpools)] <- TRUE
   dat$autodip[dat$Full.BC %in% assigned_autodip_output$bcs] <- TRUE
-  
+  cat("Done!\n")
   # return modified input data for writing
   return(dat)
 }
@@ -273,6 +279,10 @@ dat <- read.table(infile,
                   header = TRUE,
                   sep = ',',
                   stringsAsFactors = F)
+
+cat("\n*************************\n")
+cat("* filter_autodiploids.R *\n")
+cat("*************************\n\n")
 
 res_out <- main(dat, arguments)
 
