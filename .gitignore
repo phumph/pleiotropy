@@ -1,6 +1,6 @@
-_obs/
 scripts/_obs/
 plots/_obs/
 data/_obs/
 .Rprofile
 .Rproj.user
+packrat/lib*/

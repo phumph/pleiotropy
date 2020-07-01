@@ -1,0 +1,115 @@
+---
+title: "Barcode lookup for WGS choices"
+output: html_notebook
+---
+
+```{r}
+library(here)
+library(ggplot2)
+```
+
+This notebook details how we used Sanger reads of BCs from individual 2N clones to decide on which cloces to perform WGS for the following environments:
+
+1. SC 37C
+2. SC pH7.3
+3. 0.2M NaCl
+4. SC 21C
+
+First we load the barcodes extracted form the Sanger reads:
+```{r}
+#set_here(path = "/Users/phumph/Dropbox/PLT/sequencing_info/dBFA2_BC_checks_for_WGS/parsed_BCs_and_wells_mapped/")
+plates <- Sys.glob(here("data/dBFA2_parsed_BCs_and_wells_mapped/*.csv"))
+
+# laod fitness file
+fitnesses <- read.csv(here('data/dBFA2_fitnesses_with_adapt_20APR2018.csv'))
+```
+
+Run through each `plates` entry and add adapted column (0, 1, or NA) along with fitness estimate, also parsing well_ID based on Sanger plate ID built into the name. There are two naming conventions, and each requires its own, so perhaps I'll have to do this manually.
+
+Define functions:
+```{r}
+str_splitter <- function(x, sp, nm){
+  x2 <- unlist(strsplit(x, sp))[nm]
+}
+
+# well-mapper
+# assumes column-wise numbering
+well_mapper <- function(x){
+  the_map <- c('A' = 1,
+                  'B' = 2,
+                  'C' = 3,
+                  'D' = 4,
+                  'E' = 5,
+                  'F' = 6,
+                  'G' = 7,
+                  'H' = 0)
+  mod8 <- x %% 8
+  the_row <- names(the_map)[match(mod8,the_map)]
+  the_col <- ceiling(x/8)
+  if(the_col<10){
+    the_col <- paste0('0',the_col)
+  }
+  the_id <- paste0(the_row,the_col)
+  return(the_id)
+}
+```
+
+
+
+```{r}
+files <- list()
+for (file in 1:length(plates)){
+  files[[file]] <- read.csv(plates[file])
+}
+
+split_on <- data.frame(t(matrix(c('_',3,'_',6,'_',2,'_',2),nrow= 2)))
+split_on$X2 <- as.numeric(as.vector(split_on$X2))
+the.res <- list()
+for (f in 1:length(files)){
+  # define new working file
+  the.file <- data.frame(files[f])
+  
+  # initialize Full.BC column
+  the.file$Full.BC <- '0'
+  
+  # rename columns
+  names(the.file) <- c('ID','Diverse.BC','Environment.BC', 'Full.BC')
+  
+  # parse names:
+  the.file$Full.BC <- paste0(the.file$Diverse.BC,the.file$Environment.BC)
+  
+  # merge with fitness file
+  the.file2 <- merge(the.file, fitnesses, by = 'Full.BC', sort = F)
+  #length(unique(the.file2$Full.BC[the.file2$adapted==1]))
+  
+  # now, parse IDs to find wells:
+  # split on indicated character, indexed by 'file':
+  the.file2$id_well <- sapply(paste0(the.file2$ID), str_splitter, sp = paste0(split_on[f,1]), nm = split_on[f,2])
+  the.file2$id_well <- gsub('.ab1','',the.file2$id_well)
+  the.file2$id_well <- gsub('-PLR2','',the.file2$id_well)
+  
+  # now, output this:
+  the.res[[f]] <- dplyr::arrange(the.file2, id_well)
+}
+
+```
+
+Now, generate output for printing:
+
+```{r}
+# pass the right source env. to script:
+target_cols <- c('Full.BC','sources','subpool','ID','id_well','adapted')
+#paste0(here("data/dBFA2_parsed_BCs_and_wells_mapped/"),plates[f])
+
+output_adapteds <- function(x, target_cols = target_cols, fname){
+  df.tmp <- x[,names(x) %in% target_cols]
+  df.tmp <- df.tmp[df.tmp$adapted == 1,]
+  df.tmp2 <- dplyr::group_by(df.tmp, Full.BC) %>% dplyr::summarise(ID=unique(ID)[1], sources = unique(sources)[1], subpool = unique(subpool)[1], n_wells = length(id_well), first_well = unique(id_well)[1]) %>% dplyr::arrange(first_well)
+  #df.tmp3 <- merge(df.tmp, data.frame(df.tmp2), all.x = F, all.y = F, by = 'Full.BC', sort = F)
+  write.csv(df.tmp2, file = fname,quote = F, row.names = F)
+}
+
+for (f in 1:length(files)){
+  output_adapteds(the.res[[f]], target_cols = target_cols, fname = paste0(gsub('.csv','',plates[f]),'_parsed.csv'))
+}
+```

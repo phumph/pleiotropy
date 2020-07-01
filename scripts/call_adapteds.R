@@ -15,13 +15,13 @@ suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(ggplot2)))
 suppressWarnings(suppressMessages(library(progress)))
 suppressWarnings(suppressMessages(library(docopt)))
-source(file.path('./src/adapted_functions.R'))
+source(file.path('scripts/src/pleiotropy_functions.R'))
 
 # ------------------------- #
 # setup command line inputs #
 # ------------------------- #
 
-'call_adapteds.R
+"call_adapteds.R
 
 Usage:
     call_adapteds.R [--help | --version]
@@ -42,7 +42,7 @@ Options:
 Arguments:
     infile                        Input file containing fitness calls for BFA run.
     neutral_col                   String denoting set of putatively neutral BCs
-' -> doc
+" -> doc
 
 # -------------------- #
 # function definitions #
@@ -53,8 +53,8 @@ run_args_parse <- function(debug_status) {
   if (debug_status == TRUE) {
     arguments <- list()
     arguments$use_iva     <- TRUE
-    arguments$infile      <- "../data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv"
-    arguments$outdir      <- "../data/fitness_data/fitness_calls"
+    arguments$infile      <- "data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv"
+    arguments$outdir      <- "data/fitness_data/fitness_calls"
     arguments$neutral_col <- 'Ancestor_YPD_2N'
     arguments$base_name   <- 'dBFA2_cutoff-5'
     arguments$reps_iter   <- 1000
@@ -83,7 +83,6 @@ main <- function(bfa_dat, arguments) {
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     is_neutral  = TRUE,
-                    do_filter   = TRUE,
                     means_only  = FALSE)
   cat("Done!\n")
   cat("Detecting outliers in neutral barcode set...")
@@ -144,13 +143,6 @@ main <- function(bfa_dat, arguments) {
 
   cat("Done!\n")
 
-  # fit_val <- ifelse(arguments$use_iva == TRUE, 'iva_s', 'ave_s')
-  # fit_err <- ifelse(arguments$use_iva == TRUE, 'iva_s_err', 'ave_err')
-  #
-  # fit_cols <- c(grep(paste0(fit_val,'$'), names(bfa_dat), value = T),
-  #               grep(paste0(fit_err,'$'), names(bfa_dat), value = T))
-  #
-
   suppressWarnings(
     adapteds_df <-
       bfa_dat %>%
@@ -178,7 +170,7 @@ arguments <- run_args_parse(debug_status)
 infile    <- OpenRead(arguments$infile)
 dat <- read.table(infile,
                  header = TRUE,
-                 sep = ',',
+                 sep = ",",
                  stringsAsFactors = F)
 
 res_out <- main(dat, arguments)
@@ -188,7 +180,9 @@ if (!dir.exists(arguments$outdir)) {
   dir.create(arguments$outdir)
 }
 
-outfile_path <- file.path(arguments$outdir, paste0(arguments$base_name, '_adapteds.csv'))
+outfile_path <- file.path(arguments$outdir,
+                          paste0(arguments$base_name,
+                                 '_adapteds.csv'))
 
 cat(sprintf("Writing output file: %s\n", outfile_path))
 

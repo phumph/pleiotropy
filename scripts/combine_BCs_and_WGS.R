@@ -12,12 +12,12 @@
 suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(tidyr)))
 
-f_bfa_bcs  <- file.path('../data/mutation_data/barcode_extraction/PLT_all_BFA_bcs.csv')
-f_wgs_bcs  <- file.path('../data/mutation_data/barcode_extraction/bcs_extracted_compiled.csv')
-f_variants <- file.path('../data/mutation_data/master_mutation_calls_2019-SEP-16.txt')
-f_subpools_dbfa2 <- file.path('../data/fitness_data/bfa_bc_counts/dBFA2_counts_with_env_info.csv')
-f_subpools_hbfa1 <- file.path('../data/fitness_data/bfa_bc_counts/hBFA1_counts_with_env_info.csv')
-f_subpools_hbfa2 <- file.path('../data/fitness_data/bfa_bc_counts/hBFA2_counts_with_env_info.csv')
+f_bfa_bcs  <- file.path('data/mutation_data/barcode_extraction/PLT_all_BFA_bcs.csv')
+f_wgs_bcs  <- file.path('data/mutation_data/barcode_extraction/bcs_extracted_compiled.csv')
+f_variants <- file.path('data/mutation_data/master_mutation_calls_2019-SEP-16.txt')
+f_subpools_dbfa2 <- file.path('data/fitness_data/bfa_bc_counts/dBFA2_counts_with_env_info.csv')
+f_subpools_hbfa1 <- file.path('data/fitness_data/bfa_bc_counts/hBFA1_counts_with_env_info.csv')
+f_subpools_hbfa2 <- file.path('data/fitness_data/bfa_bc_counts/hBFA2_counts_with_env_info.csv')
 
 bfa_bcs  <- read.table(f_bfa_bcs,  sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
 wgs_bcs  <- read.table(f_wgs_bcs,  sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
@@ -222,7 +222,7 @@ variants_bc <-
 ###
 
 write.table(variants_bc,
-            file = file.path('../data/mutation_data/mutations_by_bc.csv'),
+            file = file.path('data/mutation_data/mutations_by_bc.csv'),
             sep = ',',
             quote = T,
             row.names = F,

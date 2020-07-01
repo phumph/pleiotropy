@@ -17,7 +17,7 @@ suppressWarnings(suppressMessages(library(docopt)))
 suppressWarnings(suppressMessages(library(knitr)))
 suppressWarnings(suppressMessages(library(kableExtra)))
 suppressWarnings(suppressMessages(library(ggplot2)))
-source(file.path('./src/adapted_functions.R'))
+source(file.path("scripts/src/pleiotropy_functions.R"))
 
 # ------------- #
 # function defs #
@@ -37,6 +37,7 @@ distify_autodips <- function(autodips, all_others, cutoff) {
   # first calculate testing distribution
   autodip_bcs <- row.names(autodips)
   res <- data.frame(NULL)
+  
   for (bc in seq_along(autodip_bcs)) {
     ad_tmp   <- autodips[-bc, ]
     focal_bc <- autodips[bc, ]
@@ -51,31 +52,42 @@ distify_autodips <- function(autodips, all_others, cutoff) {
 
   # now calculate distn for all others
   all_other_bcs <- row.names(all_others)
+  cat(sprintf("\nnum all_other_bcs:%s", length(all_other_bcs)))
   res_others <- data.frame(NULL)
+  
   for (bc in seq_along(all_other_bcs)) {
     focal_bc <- all_others[bc, ]
-
+    
+    cat(sprintf("focal other BC:\t%s", focal_bc))
+    
     # calculate dist
     dists <- apply(autodips, 1, function(x) sqrt(sum(x - focal_bc)^2))
+    cat(sprintf("\nnrow(res_others) pre rbind:\t%s", nrow(res_others)))
     res_others <- rbind(res_others,
                         data.frame(Full.BC = all_other_bcs[bc],
-                                   SQRT_SSED = sum(dists))
-    )
+                                   SQRT_SSED = sum(dists)))
+    cat(sprintf("\nnrow(res_others) post rbind:\t%s", nrow(res_others)))
   }
-
+  
+  cat(sprintf("\nnrow(res) = %s", nrow(res)))
+  cat(sprintf("\nnrow(res_others) = %s", nrow(res_others)))
+  
   res_tot <- rbind(data.frame(res, autodip = 1),
                    data.frame(res_others, autodip = 0))
 
   return(res_tot)
 }
 
+
 assign_autodip_status <- function(autodip_dists, cutoff) {
 
   # define sum SQRT_SSED dist cutoff value
-  if (cutoff == 'max') {
-    d_cutoff <- ceiling(max(autodip_dists$SQRT_SSED[autodip_dists$autodip==1]))
+  if (cutoff == "max") {
+    d_cutoff <- ceiling(max(autodip_dists$SQRT_SSED[autodip_dists$autodip == 1]))
   } else if (is.numeric(cutoff)) {
-    d_cutoff <- ceiling(quantile(autodip_dists$SQRT_SSED[autodip_dists$autodip==1], probs = 1 - cutoff)) %>% as.numeric()
+    d_cutoff <- ceiling(stats::quantile(autodip_dists$SQRT_SSED[autodip_dists$autodip == 1],
+                                 probs = 1 - cutoff)) %>%
+    as.numeric()
   }
 
   # apply cutoff to generate flags; retain barcodes to assign as autodips
@@ -85,6 +97,7 @@ assign_autodip_status <- function(autodip_dists, cutoff) {
               bcs = assigned_autodips)
          )
 }
+
 
 plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
 
@@ -107,43 +120,57 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
 
   # output table
   tab_dat %>%
-    kable(format = 'html') %>%
+    kable(format = "html") %>%
     kable_styling(bootstrap_options = c("striped", "condensed")) %>%
-    writeLines(con = file.path(outdir, base_name, 'autodip_tally_by_env.html'))
+    writeLines(con = file.path(outdir,
+                               base_name,
+                               "autodip_tally_by_env.html"))
 
   # make plot
   autodip_dists %>%
-    dplyr::mutate(autodip = ifelse(autodip == 1, 'AD+ BCs reference set','all other BCs')) %>%
+    dplyr::mutate(autodip = ifelse(autodip == 1,
+                                   "AD+ BCs reference set",
+                                   "all other BCs")) %>%
     ggplot() +
     geom_histogram(aes(x = SQRT_SSED, fill = factor(ad_flag)), bins = 50, alpha = 0.8) +
     facet_wrap(~ autodip, scales = 'free_y') +
-    scale_fill_manual(values = c('gray40','darkorange2'), name = 'below cutoff') +
+    scale_fill_manual(values = c("gray40", "darkorange2"), name = "below cutoff") +
     theme_minimal() +
     theme(panel.border = element_rect(fill = NA),
-          plot.title = element_text(size = 9, face = 'bold')) +
-    geom_vline(xintercept = cutoff, col = 'gray60', lty = 2) +
-    ggtitle(paste0("Autodip. D distn (", n_dp," reference BCs, ", n_other, " other BCs)\n", base_name, "\nDist cutoff = ", cutoff, "\nNum. BCs <= cutoff = ", n_ad_flag)) ->
+          plot.title = element_text(size = 9, face = "bold")) +
+    geom_vline(xintercept = cutoff, col = "gray60", lty = 2) +
+    ggtitle(paste0("Autodip. D distn (",
+                   n_dp,
+                   " reference BCs, ",
+                   n_other,
+                   " other BCs)\n",
+                   base_name,
+                   "\nDist cutoff = ",
+                   cutoff,
+                   "\nNum. BCs <= cutoff = ",
+                   n_ad_flag)) ->
     dist_plot_1
 
   # output plot
-  autodip_dists$Subpool.Environment <- factor(autodip_dists$Subpool.Environment, levels = tab_dat$Subpool.Environment)
+  autodip_dists$Subpool.Environment <- factor(autodip_dists$Subpool.Environment,
+                                              levels = tab_dat$Subpool.Environment)
 
   autodip_dists %>%
     dplyr::filter(autodip == 0) %>%
     ggplot() +
     geom_histogram(aes(x = SQRT_SSED, fill = factor(ad_flag)), bins = 50, alpha = 0.8) +
-    facet_wrap(~ Subpool.Environment, nrow = 5, scales = 'free_y') +
-    scale_fill_manual(values = c('gray40','darkorange2'), name = 'below cutoff') +
+    facet_wrap(~ Subpool.Environment, nrow = 5, scales = "free_y") +
+    scale_fill_manual(values = c("gray40", "darkorange2"), name = "below cutoff") +
     theme_minimal() +
     theme(panel.border = element_rect(fill = NA)) +
-    geom_vline(xintercept = cutoff, col = 'gray60', lty = 2) ->
+    geom_vline(xintercept = cutoff, col = "gray60", lty = 2) ->
     dist_plot_2
 
   suppressWarnings(
     ggpubr::ggarrange(plotlist = list(dist_plot_1,dist_plot_2), nrow = 2, align = 'hv',
                     common.legend = T, heights = c(1,3),
-                    labels= c('a','b')) %>%
-    ggsave(filename = file.path(outdir, base_name, 'autodip_tally_plots.png'),
+                    labels= c("a","b")) %>%
+    ggsave(filename = file.path(outdir, base_name, "autodip_tally_plots.png"),
            device = 'png',
            dpi = 300,
            width = 4.5,
@@ -156,7 +183,7 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
 # setup command line inputs #
 # ------------------------- #
 
-'filter_autodiploids.R
+"filter_autodiploids.R
 
 Usage:
     filter_autodiploids.R [--help | --version]
@@ -175,7 +202,7 @@ Options:
 Arguments:
     infile                        Input file containing fitness calls for BFA run.
     audodip_tag                   String denoting identifier for autodip lineages
-' -> doc
+" -> doc
 
 # -------------------- #
 # function definitions #
@@ -186,21 +213,22 @@ run_args_parse <- function(debug_status) {
   if (debug_status == TRUE) {
     arguments <- list()
     arguments$use_iva     <- TRUE
-    arguments$infile      <- "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_2020-03-03.csv"
-    arguments$outdir      <- "../data/fitness_data/fitness_calls"
-    arguments$autodip_tag <- 'autodiploids'
-    arguments$base_name   <- 'hBFA1_cutoff-5'
-    arguments$exclude     <- 'X48'
+    arguments$infile      <- "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds.csv"
+    arguments$outdir      <- "data/fitness_data/fitness_calls"
+    arguments$autodip_tag <- "autodiploids"
+    arguments$base_name   <- "hBFA1_cutoff-5"
+    arguments$exclude     <- "X48Hr"
     arguments$cutoff      <- 0
     arguments$gens        <- 8
   } else if (debug_status == FALSE) {
-    arguments <- docopt(doc, version = 'filter_autodiploids.R v.1.0')
+    arguments <- docopt::docopt(doc, version = "filter_autodiploids.R v.1.0")
   }
   return(arguments)
 }
 
+
 main <- function(dat, arguments) {
-  
+
   # filter input dataframe to prepare it for
   cat(sprintf("Preparing fitness file %s...", arguments$infile))
   autodips <-
@@ -220,8 +248,13 @@ main <- function(dat, arguments) {
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     means_only  = TRUE)
-
+  
+  cat(sprintf("\nnrow(all_others):\t%s", nrow(all_others)))
+  
+  stopifnot(!is.null(row.names(all_others)), !is.null(row.names(autodips)))
+  
   all_others <- all_others[!row.names(all_others) %in% row.names(autodips), ]
+  
   cat("Done!\n")
   cat("Flagging autodiploid lineages...")
   autodip_dists <- distify_autodips(autodips   = autodips,
@@ -235,36 +268,27 @@ main <- function(dat, arguments) {
   # need to break this out by subpool.environment
   suppressWarnings(
     autodip_dists %>%
-    dplyr::left_join(dat[,c('Full.BC','Subpool.Environment')],
-                     by = 'Full.BC') ->
+    dplyr::left_join(dat[,c("Full.BC", "Subpool.Environment")],
+                     by = "Full.BC") ->
     autodip_dists
   )
-  
-  # # plot by environment:
-  # autodip_dists %>%
-  #   ggplot() +
-  #   geom_histogram(aes(x = SQRT_SSED, fill = factor(autodip)), bins = 50) +
-  #   facet_wrap(~Subpool.Environment) +
-  #   theme_bw()
 
-  # this function will apply a cutoff rule to flag non-reference BCs to autodip class
   assigned_autodip_output <- assign_autodip_status(autodip_dists, cutoff = arguments$cutoff)
-  cat("Done!\n")
-  
+
+cat("Done!\n")
   cat(sprintf("Generating plots for output in %s...", arguments$outdir))
-  
-  # plot for output
+
   plot_autodip_status(autodip_dists,
                       cutoff    = assigned_autodip_output$cutoff,
                       outdir    = arguments$outdir,
                       base_name = arguments$base_name)
 
-  # generate flags for original data and return
+
   dat$autodip <- FALSE
   dat$autodip[grepl(arguments$autodip_tag, dat$Which.Subpools)] <- TRUE
   dat$autodip[dat$Full.BC %in% assigned_autodip_output$bcs] <- TRUE
   cat("Done!\n")
-  # return modified input data for writing
+
   return(dat)
 }
 
@@ -272,7 +296,7 @@ main <- function(dat, arguments) {
 # main #
 # ---- #
 
-debug_status <- TRUE
+debug_status <- FALSE
 arguments <- run_args_parse(debug_status)
 infile    <- OpenRead(arguments$infile)
 dat <- read.table(infile,
@@ -286,16 +310,18 @@ cat("*************************\n\n")
 
 res_out <- main(dat, arguments)
 
-outfile_path <- file.path(arguments$outdir, paste0(arguments$base_name, '_adapteds_autodips','.csv'))
+outfile_path <- file.path(arguments$outdir,
+                          paste0(arguments$base_name,
+                                 "_adapteds_autodips.csv"))
 
 cat(sprintf("Writing output file: %s\n", outfile_path))
 
 write.table(res_out,
             file = outfile_path,
-            quote = F,
-            sep = ',',
-            col.names = T,
-            row.names = F)
+            quote = FALSE,
+            sep = ",",
+            col.names = TRUE,
+            row.names = FALSE)
 
 cat("**Script completed successfully!**\n\n")
 

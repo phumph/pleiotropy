@@ -4,7 +4,7 @@
 
 - [x] Finish and run `call_adapteds.R`
 - [x] Compile BCs via `combine_BCs_and_WGS.R`
-- [ ] Generate `t-SNE` cluster process
+- [x] Generate `t-SNE` cluster process
 - [ ] Generate summary tables and plots for lineage count by cluster
 - [ ] Map genotype to phenotype with mutual information
 
@@ -44,9 +44,9 @@ Perhaps I need to compare output from average versus inverse-variance weighted a
 Still haven't made much progress. Need to perform outlier detection on neutral set and generate empirical distribution for generating contrasts.
 
 - [x] Write `detect_outliers()` function to evaluate each fitness value of neutrals in a leave-one-out framework.
-- [ ] Plot z-scores of each neutral BC across environments
-- [ ] Decide on exclusion criteria for, e.g., average z-score.
-  - [ ] decide whether this should be signed or abs
+- [x] Plot z-scores of each neutral BC across environments
+- [x] Decide on exclusion criteria for, e.g., average z-score.
+  - [x] decide whether this should be signed or abs
 
 OK so the simple theory here goes like this: the squared $z_i$ should behave as $\sim \chi^2(df = 1)$. So, if we calculate the joint likelihood of the data under the null as
 
@@ -64,7 +64,7 @@ Use random matrixes; generate parametric bootstrapped multivariate distribution 
 
 Generate density estimates such that I can determine the probability under the distribution of each barcode in multivariate space.
 
-The best way to think about this is to calcualte the Mahalanobis distance:
+The best way to think about this is to calculate the Mahalanobis distance:
 > The Mahalanobis distance is the distance of the test point from the center of mass divided by the width of the ellipsoid in the direction of the test point.
 
 A very nice description is on the wikipedia page [here](https://en.wikipedia.org/wiki/Mahalanobis_distance). Essentially, I need to write down a generative model of $k$-variate random vectors for the neutral set, standardize by environment, then use the transformed $k$-variant vectors to calculate the covariance matrix of the set. Using this, I can calculate the Mahalanobis distance of each component $k$-variate vector and the ellipsoid mean and generate probability estimates for each vector under this distribution.
@@ -74,6 +74,6 @@ Ok so here is the plan:
 1. generate MVN $k$-variate random vectors for each barcode ($R=100000$) except for the leave-one-out barcode $q$.
 2. center and scale each component vector $x_{ij} \rightarrow z_{ij}$.
 3. calculate Mahalanobis distance of each component vector and the mean (which, to numerical error, should be all zeros).
-4. Compare distance of hold-out vector versus distribution of others; get p-value for the barcode.
+4. Compare distance of hold-out vector versus distribution of others; get $p$-value for the barcode.
 
 Check this site out in more detail: [https://rmflight.github.io/post/vignette-analysis/](https://rmflight.github.io/post/vignette-analysis/)

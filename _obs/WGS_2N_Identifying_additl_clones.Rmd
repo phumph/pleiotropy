@@ -1,0 +1,418 @@
+---
+title: "Identifying additional adapted 2N clones to sequence"
+output: html_notebook
+---
+
+*Last updated: 12 Feb 2018 by PTH*
+
+This notebook will help us determine which clones from the dBFA2 have adaptive fitness traces across the experiment from the following source environments:
+
+1. 37C  
+2. 21C
+3. 0.2M NaCl
+4. SC pH 7.3
+5. SC pH 3.8
+
+The goal is to identify a set of approx. 96 additional genomes to sequence, with as many from each of the five environments as possible without having to sample clone barcodes from clone plats too deeply to find them.
+
+The strategy will be as follows:
+1. Use fitness data (minus drug environments) from dBFA2 to call clones as adapted or not, heuristically based on $3 * \sigma$ from the neutral class.
+2. Use the frequency of these putative adapted clones in the 2N dBFA sub-pool sequencing data as an estimate of prevalence among the clone plate wells. This will help us estimate how deeply we need to barcode PCR and Sanger sequence in order to find the clone.
+
+First, load packages:
+```{r}
+library(here)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(plotly)
+```
+
+```{r}
+# load data:
+#system("gdrive download 1x-m-Q3ay_h5nK_qjvvoLA8UJRkI3_hX2") # fit04
+system("gdrive download 13DzOgcAPhenz_JHxX-7YSdjJ0Ji0wooM") # fit *no filter)
+#system("mv fit_filter04.txt data")
+system("mv fit_all.txt data")
+# downloads Lucas' fitness estimate based on harsh error filter
+# filename: fit_filter04.txt
+fit <- read.table(here("data","fit_all.txt"),T,"\t")
+```
+
+Now let's import Milo's latest dBFA2 counts file so we can extract the neutral barcodes:
+```{r}
+# using dBFA2 count file from Oct 7 2017
+system("gdrive download 0BxIjwA18EynHMi1iWHJrc3hDQU0")
+system("mv dBFA2_combined.csv data")
+dBFA2 <- read.csv(here("data","dBFA2_combined.csv"),T)
+```
+
+Let's grab the neutral class and store their barcodes
+```{r}
+# relevant columns:
+  # AncestorPool.YPD.C.1
+  # AncestorPool.YPD.C.2
+neutral_BCs <- dBFA2[(dBFA2[,'AncestorPool.YPD.C.1']>0) | (dBFA2[,'AncestorPool.YPD.C.2']>0),'Full.BC']
+```
+
+Now we'll flag the rows in the fitness data that hit these neutrals:
+```{r}
+fit[,'neut'] <- 0
+fit[fit[,'row_data.Barcode']%in% neutral_BCs,'neut'] <- 1
+```
+
+It looks like Lucas already called these clones as adaptive based on some z-score cutoff from the neutral distribution. What we'll do is use this information to create a vector of calls across the measured environmetns, then plot the distribution of the neutrals themselves (null distribution).
+
+Let's check out a quick table of the adapted calls for these neutral sets from a couple environments:
+```{r, message=FALSE, warning=FALSE}
+# grab relevant columns, melt, and compute table:
+fitb <- fit[fit[,'neut']=='1',names(fit) %in% c('row_data.Barcode', grep('pZvalue', names(fit), value = T))] # grab only neutrals and relevant columns:
+fitc <- melt(fitb, measure.vars = grep('pZvalue', names(fit), value = T), id.vars = 'row_data.Barcode')
+table(fitc[,'variable'],fitc[,'value'])
+```
+
+Looks like based on the z-score assessment that these calls were already fairly conservative (only $n=7$ adaptive calls where neutral == TRUE). This is a reasonable false discovery rate and we'll keep it for these purposes. 
+
+Next we'll grab all of the clones that have 'adapted' in their home environment for the five target environments listed above:
+```{r}
+# routine:
+  # loop through each source environment
+    # grab adapted BCs where pZvalue == 'adaptive' for the focal home environment
+      # need to define home environment where grep of env occurs among the columns with pZvalue:
+envs = c('02M','21C','37C','pH3_8','pH7_3','SC','YPD')
+bcs.adapt.at.home <- function(dat, freqdat, envs, freq.str = 'Subpool', t0 = 'dBFA2.Pre.R0.Time0', bc.field = 'row_data.Barcode', adaptive.call = 'adaptive', home.call = 'row_data.Home_env', adapt.col.val = 'pZvalue', fit.err.col = '_err', fit.col = 'R1'){
+  c1 <- grep(adapt.col.val, names(dat), value = T) # initialize vector of adapted/non-adapted columns
+  BCs_list <- list()
+  for (e in 1:length(envs)){
+    c2 <- grep(paste0(envs[1]), c1, value = T) # find relevant adapted vector for focal environment
+    fit <- grep(fit.col, names(dat), value = T) %>% grep('Z',., value = T, invert = T) %>% grep('_err',.,value = T, invert = T) %>% grep(envs[e],., value = T)
+    err <- grep(fit.col, names(dat), value = T) %>% grep('Z',., value = T, invert = T) %>% grep('_err',.,value = T, invert = F) %>% grep(envs[e],., value = T)
+    r1 <- grep(envs[e],dat[,paste0(home.call)])
+    #print(length(r1))
+    targets <- data.frame(BC = dat[r1,bc.field][dat[r1,c2]==adaptive.call],
+                          s.home = dat[r1,fit][dat[r1,c2]==adaptive.call]/8,
+                          s.err.home = dat[r1,err][dat[r1,c2]==adaptive.call]/8,
+                          source = envs[e])
+    targets <- targets[complete.cases(targets),]
+    
+    # assign relative frequency from t0 pool
+    t0.sum <- sum(freqdat[,t0])
+    
+    # add frequency information to targets based on match of BC:
+    # define rows from freqdat to write to targets:
+    therows <- match(targets[,'BC'], freqdat[,'Full.BC'])
+    targets[,'t0.count'] <- freqdat[therows,t0]
+    freq.cols <- grep(freq.str, names(freqdat), value = T) %>% grep(envs[e],.,value = T) # should be length 2 if we have both sub-pool reps
+    
+    # calculate sums of t0 C and D pools, as well as subpool.C and subpool.D sums:
+    # find rows for BCs with counts in SP.C and SP.D, accountinf for the potential absence of subpool:
+    
+    if(length(freq.cols) == 1){
+      
+      # define sub-pool identity:
+      last.char <- last(unlist(strsplit(freq.cols, split = '')))
+      if (last.char %in% c('R1','C')) {
+        colname <- paste0('Subpool.',last.char)
+        targets[,colname] <- freqdat[therows,freq.cols]
+        
+        # calculate frequency information based on total subpool reads:
+        colname2 <- paste0('Subpool.',last.char,'.freq')
+        targets[,colname2] <- freqdat[therows,freq.cols] / sum(freqdat[,freq.cols])
+        
+        # calculate sum total of reads for all barcodes from the relevant sup-pool in the t0 library.
+        # this will be use to re-normalize frequencies of adapted lineages downstream
+        # I need to find all rows matching source environment
+        # and subtract out those with counts in freq.col
+        spC.BCs <- freqdat[freqdat[,freq.cols]>0,'Full.BC']
+        all.BCs <- freqdat[,'Full.BC'][grep(envs[e],freqdat[,'Environment'])]
+        spD.BCs <- all.BCs[!all.BCs %in% spC.BCs]
+        
+        t0.sum.C <- sum(freqdat[,freq.col][freqdat[,'Full.BC'] %in% spC.BCs])
+        t0.sum.D <- sum(freqdat[,freq.col][freqdat[,'Full.BC'] %in% spD.BCs])
+        
+        # add 'D' column as 'NA'
+        targets[,paste0('Subpool.D')] <- NA
+        targets[,paste0('Subpool.D.freq')] <- NA
+        targets[,'t0.freq'] <- NA
+        targets[,'t0.freq'][spC.BCs %in% targets[,'BC']] <- targets[,'t0.count'][spC.BCs %in% targets[,'BC']] / t0.sum.C
+        targets[,'t0.freq'][spD.BCs %in% targets[,'BC']] <- targets[,'t0.count'][spD.BCs %in% targets[,'BC']] / t0.sum.D
+        targets[,'t0.freq'][targets[,'t0.freq']>1] <- NA
+        
+        ## THIS ISN'T WORKING YET! I need to figure out how to get t0 information relevant for the non-existent sub-pool.
+        
+        
+      } else {
+        targets[,paste0('Subpool.C')] <- NA
+        targets[,paste0('Subpool.C.freq')] <- NA
+        colname <- paste0('Subpool.',last.char)
+        targets[,colname] <- freqdat[therows,freq.cols]
+        
+        colname2 <- paste0('Subpool.',last.char,'.freq')
+        targets[,colname2] <- freqdat[therows,freq.cols] / sum(freqdat[,freq.cols])
+        
+      }
+    } else if (length(freq.cols) == 2){
+      # do for each:
+      colname <- c(paste0('Subpool.',last(unlist(strsplit(freq.cols[1], split = '')))),
+                   paste0('Subpool.',last(unlist(strsplit(freq.cols[2], split = '')))))
+      targets[,colname[1]] <- freqdat[therows,freq.cols[1]] / sum(freqdat[therows,freq.cols[1]])
+      targets[,colname[2]] <- freqdat[therows,freq.cols[2]] / sum(freqdat[therows,freq.cols[2]])
+    }
+    # freqdat2 <- freqdat[,names(freqdat) %in% c('Full.BC',freq.col)]
+    # freqsum <- sum(freqdat2[,freq.col])
+    # freqdat2[,freq.col][freqdat2[,'Full.BC'] %in% targets[,'BC']]
+    
+    # add subpool information to SP column:
+    targets[,'SP'] <- 'C'
+    targets[,'SP'][targets[,'Subpool.D']>0] <- 'D'
+    
+    # targets[,'t0.freq'] <- targets[,'t0.count'] / sum(targets[,'t0.count']) # renormalized overall
+    # re-normalize t0 counts within respective sub-pools:
+    t0.C <- sum(targets[,'t0.count'][targets[,'SP']=='C'])
+    t0.D <- sum(targets[,'t0.count'][targets[,'SP']=='D'])
+    targets[,'t0.freq'] <- 0
+    targets[targets[,'SP'] %in% c('C'),'t0.freq'] <- targets[,'t0.count'][targets[,'SP']=='C'] / t0.C
+    targets[targets[,'SP'] %in% c('D'),'t0.freq'] <- targets[,'t0.count'][targets[,'SP']=='D'] / t0.D
+    
+    BCs_list[[e]] <- targets
+    }
+  names(BCs_list) <- envs
+  return(BCs_list)
+}
+
+adapted_BCs <- bcs.adapt.at.home(dat = fit04, freqdat = dBFA2, envs = c('02M','21C','37C','pH3_8','pH7_3','SC','YPD'))
+adapteds <- do.call(rbind,adapted_BCs)
+```
+
+Now that we have compiled all of the relevant information, we can plot by environment. As an example, let's plot 0.2M NaCl, which only had one sub-pool ('D') sequenced. We will use t0 information where data do not exist
+```{r, fig.height=3, fig.width=8, message=FALSE, warning=FALSE}
+# try mock-up plot using t0:
+subdat <- dplyr::filter(adapteds, source == '02M') %>% arrange(s.home)
+subdat[,'BC'] <- factor(subdat[,'BC'], levels = subdat[,'BC'])
+
+# plot by fitness
+g1 <- ggplot(subdat, aes(x = BC, y = s.home, ymin = s.home - s.err.home, ymax = s.home + s.err.home, col = log(t0.freq,10))) + geom_point() + geom_linerange() + theme_bw()
+
+# plot by frequency
+subdat <- dplyr::filter(adapteds, source == '02M') %>% arrange(t0.freq)
+subdat[,'BC'] <- factor(subdat[,'BC'], levels = subdat[,'BC'])
+g2 <- ggplot(subdat, aes(x = BC, y = t0.freq*384, col = s.home))+ geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10))
+g2
+
+rownames(subdat) <- subdat[,'BC']
+# now plot scatter:
+g3 <- ggplot(subdat, aes(x = s.home, y = round(t0.freq*384), col = s.home, size = t0.freq*384, group = BC)) + geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10)) + facet_wrap(~ SP)
+ggplotly(g3)
+```
+
+```{r}
+subdat <- dplyr::filter(adapteds, source == '37C') %>% arrange(t0.freq)
+subdat[,'BC'] <- factor(subdat[,'BC'], levels = subdat[,'BC'])
+
+rownames(subdat) <- subdat[,'BC']
+# now plot scatter:
+g3 <- ggplot(subdat, aes(x = s.home, y = round(t0.freq*384), col = s.home, size = t0.freq*384, group = BC)) + geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10)) + facet_wrap(~ SP)
+ggplotly(g3)
+```
+
+```{r}
+subdat <- dplyr::filter(adapteds, source == '21C') %>% arrange(t0.freq)
+subdat[,'BC'] <- factor(subdat[,'BC'], levels = subdat[,'BC'])
+
+rownames(subdat) <- subdat[,'BC']
+# now plot scatter:
+g3 <- ggplot(subdat, aes(x = s.home, y = round(t0.freq*384), col = s.home, size = t0.freq*384, group = BC)) + geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10)) + facet_wrap(~ SP)
+ggplotly(g3)
+```
+
+```{r}
+subdat <- dplyr::filter(adapteds, source == 'pH3_8') %>% arrange(t0.freq)
+subdat[,'BC'] <- factor(subdat[,'BC'], levels = subdat[,'BC'])
+
+rownames(subdat) <- subdat[,'BC']
+# now plot scatter:
+g3 <- ggplot(subdat, aes(x = s.home, y = round(t0.freq*384), col = s.home, size = t0.freq*384, group = BC)) + geom_point() + theme_bw() + scale_color_gradientn(colors = viridis(10)) + facet_wrap(~ SP)
+ggplotly(g3)
+```
+
+These frequencies aren't correct, since they're not normalized to the correct denominator. Thus, I'll need to renormalize based on all lineages in sub-pool before making determination and simulating sampling.
+
+## APPROACH 2
+
+The approach above was poorly conceived and was overly complicated and barely functional. The better approach is to simply sample from the Subpool columns and then compute the proportion of unique and adapted barcodes per sampling effort. It doesn't really matter what the barcodes are or which fitness they have, honestly. I need to draw directly from a vector of column lists that I supply. 
+
+```{r}
+# define Subpools to sample from:
+subpools <- c(grep("Subpool", names(dBFA2), value = T) %>% grep("48Hr",.,invert = T, value = T) %>% grep("0.8M",.,invert = T, value = T))
+subpools <- subpools[c(3:10,16,17)]
+
+# define function that takes each subpool column as input and does the following:
+  # samples to given depth
+    # calculates number of adapted and unique barcodes seen
+      # repeats 100 times
+        # produces coupon collector curve for each sampling depth (up to all clones, n = 384 per sub-pool)
+
+# sp is single character representing the column of dat to be sampled
+# need to construct the sampling vector according to frequencies of each barcode:
+subpool.sample <- function(dat, fitdat, sp, N, reps = 30, fitcols, cutoff = 0.015){
+  # initialize results data.frame
+  res.dat <- data.frame(sp = NA, N = NA, rep = NA, n.adapt = NA)
+  res.dat <- res.dat[-1,]
+  
+  # determine environment of the sp:
+  env <- unlist(strsplit(sp,'\\.'))[2]
+  # thecol <- grep(env,grep('pZvalue', names(fitdat), value = T), value = T)
+  thecol <- grep(env,fitcols, value = T) # define as fitness column itself
+  dat2 <- dat[dat[,sp]>0,] # take only sampled guys putatively in target sub-pool
+  
+  # make vector from which to sample:
+  # dat2[,'bc.freq'] <- dat2[,sp] / sum(dat2[,sp])*384
+  dat2[,'bc.freq'] <- dat2[,sp] / sum(dat2[,sp]) # just calculate estimated frequency
+  #BC.vec <- rep(dat2[,'Full.BC'], dat2[,'bc.freq'], each = T)
+  
+  # determing sampling depth sequence (n = 8...max(N))
+  N <- c(seq(8,length(BC.vec),8))
+  
+  # sampling routing
+  for (n in 1:length(N)){
+    for (i in 1:reps){
+      # sample BCs from target column
+      BC.samp <- unique(sample(dat2[,'Full.BC'], size = N[n], prob = dat2[,'bc.freq'], replace=TRUE))
+      
+      # count how many adapted  
+      #n.adapt <- sum(fitdat[,thecol][fitdat[,'row_data.Barcode'] %in% paste0(BC.samp)] == 'adaptive', na.rm = TRUE)
+      n.adapt <- sum(fitdat[,thecol][fitdat[,'row_data.Barcode'] %in% BC.samp] > cutoff*8, na.rm = T)
+      
+      # add to results file
+      res.dat <- rbind(res.dat, data.frame(sp = sp, N = N[n], rep = i, n.adapt = n.adapt))
+      #print(i)
+    }
+    print(paste0(sp,':',N[n]))
+  }
+p1 <- ggplot(dat2, aes(x = bc.freq)) + geom_histogram(bins = 60) + theme_bw() + ggtitle(paste0(sp)) + geom_vline(xintercept = c(1/384,2/384,3/384,4/384,5/384,10/384), col = "gray40")
+return(list(data = res.dat,
+            plot = p1))
+}
+```
+
+Basically, with two plates of Sanger sequencing, we could locate approx. 40 adaptive clones from three total environments. Probably its worth Sanger sequencing the pH7.3 samples since we could potentially boost our changes of WGS new clones if we condition on not having sampled them via Sanger in a large proportion of wells. For the 21C and 02M NaCl, it's probably worth doing some Sanger sequencing also just to narrow down the sequence space.
+
+This doesn't look correct since we should capture the total number of clones that are adaptive once we sample fully. Is this what we find?
+
+```{r}
+# this is how many were adaptive in the simulation
+res.full %>% group_by(sp) %>% filter(N == max(N)) %>% summarise(max.adapt = max(n.adapt))
+```
+
+```{r}
+# compare to the number adaptive in the sample set:
+adapteds %>% group_by(source, SP) %>% summarise(tot.adapteds = length(BC))
+```
+
+Ok the simulation adequately captures the number of adapted lineages in the sub-pool with sub-pool sequences. Now, for all of those sub-pools that were not sequenced, let's use the $t_0$ information to estimate frequencies.
+
+These include:
+21C.C
+02M.D
+37C.C
+
+Figure out why I'm not sampling the 37C adaptive clones:
+```{r}
+adapteds %>% group_by(source, SP) %>% filter(source %in% grep("37C",source,value =T))
+```
+N adaptive in 37C:
+```{r}
+fitdat %>% filter(row_data.Home_env %in% grep('37C',row_data.Home_env, value = T)) %>% summarise(tot.adapt = sum(X37C_R1_Zscore_pZvalue  == 'adaptive', na.rm = T))
+```
+
+
+In this plot, red are the 37C clones while gray are the YPD clones, presumed to all be neutral except maybe for a small number. Clearly the zero is poorly defined in this dataset, since it should be relative to the YPD neutral class. But there is a red shoulder, indicating some sizeable number of non-neutral clones. These are the ones I should be able to sample, but for some reason they're not showing up in the adaptive column. I'll set my own threshold here, which is defined as beyond a cutoff, which I will define for each environment below:
+
+```{r}
+# setting cutoffs from YPD neutral class
+# define neutral barcodes:
+# find all BCs in AncestorPool.YPD.C.1 and AncestorPool.YPD.C.2
+neutrals <- dBFA2[,'Full.BC'][(dBFA2[,'AncestorPool.YPD.C.1'] > 0)|(dBFA2[,'AncestorPool.YPD.C.2'] > 0)]
+
+# pull out fitness data for all neutrals:
+fitdat %>% filter(row_data.Barcode %in% neutrals) -> datNeut
+
+
+# define cutoffs:
+bfa.envs <- names(datNeut)[c(3:5,8:12)]
+
+# capture only subset of datNeut with relevant fitness columns:
+datNeut2 <- datNeut[,names(datNeut) %in% c('row_data.Barcode',bfa.envs)]
+datNeut <- datNeut2[complete.cases(datNeut2),]
+cutoffs <- data.frame(bfa = NA, n.mu = NA, cut = NA)
+cutoffs <- cutoffs[-c(1),]
+for (b in 1:length(bfa.envs)){
+  cutoffs <- rbind(cutoffs,
+                   data.frame(bfa = bfa.envs[b], n.mu  = mean(datNeut[,bfa.envs[b]]/8),
+                              cut = 2*sd(datNeut[,bfa.envs[b]]/8))
+                   )
+}
+```
+
+
+Look at adaptive BCs in dBFA2 from 37C with neutrals plotted:
+```{r, message=FALSE, warning=FALSE}
+fitdat %>% filter(row_data.Home_env %in% grep('37C',row_data.Home_env, value = T)) -> dat37
+
+p37c1 <- ggplot() + geom_density(data = datNeut, aes(x = X37C_R1/8), color = "gray40") + 
+  geom_density(data = dat37, aes(x = X37C_R1/8), color = "red") + theme_bw() + geom_vline(xintercept = cutoffs[3,'n.mu'], col = "black") + 
+  geom_vline(xintercept = c(cutoffs[3,'n.mu'] + (2*cutoffs[3,'n.sig']), cutoffs[3,'n.mu'] - (2*cutoffs[3,'n.sig'])), col = "gray40", lty = "dotted") +
+  xlab("fitness (s)")
+print(p37c1)
+```
+
+Set up vector of cutoffs and then run the sampling routine to estimate adapteds per sample:
+```{r, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+cuts <- cutoffs[c(5,5,3,3,7,7,8,8,2,1),'cut']
+
+# iterate through subpools and generate samples:
+res.list <- list()
+res.plots <- list()
+for (l in 1:length(subpools)){
+  sps <- subpool.sample(dat = dBFA2, fitdat = fit, fitcols = bfa.envs, sp = subpools[l], reps = 100, cutoff = cuts[l])
+  res.list[[l]] <- sps$data
+  res.plots[[l]] <- sps$plot
+}
+
+res.full <- do.call(rbind, res.list)
+
+# export this simulation result:
+saveRDS(res.full, file = here("res.full.rds"))
+saveRDS(adapteds, file = here("adapteds.rds"))
+
+# summarise the data:
+res.full2 <- group_by(res.full, sp, N) %>% summarise(mean.n.adapt = round(sum(n.adapt)/length(n.adapt)), lower = round(quantile(n.adapt, probs = 0.025)), upper = round(quantile(n.adapt, probs = 0.975)))
+
+# plot the data:
+g1 <- ggplot(res.full2, aes(x = N, y = mean.n.adapt, ymin = lower, ymax = upper, group = sp)) + geom_point() + geom_linerange() + geom_line() + facet_wrap(~ sp, scales = 'free') + theme_bw() + ggtitle('cutoffs are 2*sigma > mean(neut)') + scale_x_continuous(limits = c(0,100))
+
+pdf(file = here('adaptive_sampling_2N.pdf'), width = 7, height = 5)
+print(g1)
+dev.off()
+print(g1)
+```
+
+Now do the same plot but for the whole data range, up to $n=384$:
+```{r, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+g2 <- ggplot(res.full2, aes(x = N, y = mean.n.adapt, ymin = lower, ymax = upper, group = sp)) + geom_point() + geom_linerange() + geom_line() + facet_wrap(~ sp, scales = 'free') + theme_bw() + ggtitle('cutoffs are 2*sigma > mean(neut)')# + scale_x_continuous(limits = c(0,100))
+
+pdf(file = here('adaptive_sampling_2N_384.pdf'), width = 7, height = 5)
+print(g2)
+dev.off()
+print(g2)
+```
+
+This looks far more reasonable than the first iteration of the sampler. Now we can actually get a chance to check each environment and replicate on its own.
+
+I'll also plot the frequency distribution of clone BCs from each sub-pool so we can get a sense for how skewed these distributions are. This will help inform whether we would even be able to do compressed sensing on these clones.
+
+## Save data
+```{r}
+save.image(here("021418.RData"))
+```
+

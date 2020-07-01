@@ -1,4 +1,0 @@
-"0","#set_here(path = ""/Users/phumph/Dropbox/PLT/sequencing_info/dBFA2_BC_checks_for_WGS/parsed_BCs_and_wells_mapped/"")"
-"0","plates <- Sys.glob(here(""data/dBFA2_parsed_BCs_and_wells_mapped/*.csv""))"
-"0","# laod fitness file"
-"0","fitnesses <- read.csv(here('data/dBFA2_fitnesses_with_adapt_20APR2018.csv'))"

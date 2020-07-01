@@ -1,5 +1,0 @@
-"0","        targets[,'t0.freq'][spC.BCs %in% targets[,'BC']] <- targets[,'t0.count'][spC.BCs %in% targets[,'BC']] / t0.sum.C
-"
-"2","Error in `[<-.data.frame`(`*tmp*`, , ""t0.freq"", value = c(0.00108018807980684,  : 
-  replacement has 335 rows, data has 111
-"

@@ -56,24 +56,10 @@ Rscript filter_autodiploids.R \
   "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_2020-03-03.csv" \
   "autodiploids"
 
-
-  if (debug_status == TRUE) {
-      arguments <- list()
-      arguments$use_iva     <- TRUE
-      arguments$infile      <- "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_2020-03-03.csv"
-      arguments$outdir      <- "../data/fitness_data/fitness_calls"
-      arguments$autodip_tag <- 'autodiploids'
-      arguments$base_name   <- 'hBFA1_cutoff-5'
-      arguments$exclude     <- 'X48'
-      arguments$cutoff      <- 0
-      arguments$gens        <- 8
-
-
-
 # run t-SNE cluster on all lineages (hBFA1 and dBFA2)
 Rscript cluster_lineages.R -u \
   --gens=8 \
   --exclude=CLM\|FLC4\|Stan\|X48Hr \
   --outdir=../data/fitness_data/fitness_calls/clusters \
-  ../data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapteds_2020-03-03.csv \
-  ../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv
+  "../data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapteds_2020-03-03.csv" \
+  "../data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv"

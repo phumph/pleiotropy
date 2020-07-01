@@ -1,3 +1,0 @@
-"0","dBFA2 <- read.csv(here(""data/Prelim_Fitness_Estimation_03_23_18/03_23_18_fitness_estimates/dBFA2_s_03_23_18_GC_cutoff_5.csv""))"
-"0","hBFA1 <- read.csv(here(""data/Prelim_Fitness_Estimation_03_23_18/03_23_18_fitness_estimates/hBFA1_s_03_23_18_GC_cutoff_5.csv""))"
-"0","hBFA2 <- read.csv(here(""data/Prelim_Fitness_Estimation_03_23_18/03_23_18_fitness_estimates/hBFA2_s_03_23_18_GC_cutoff_5.csv""))"

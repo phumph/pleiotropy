@@ -16,8 +16,8 @@ library(ggpubr)
 #### DEBUGGING PANEL
 arguments <- list()
 arguments$use_iva <- TRUE
-arguments$adapteds <- '../data/fitness_data/fitness_calls/cutoff-5_adapteds_2019-11-25.csv'
-arguments$variants <- '../data/mutation_data/mutations_by_bc.csv'
+arguments$adapteds <- 'data/fitness_data/fitness_calls/cutoff-5_adapteds_2019-11-25.csv'
+arguments$variants <- 'data/mutation_data/mutations_by_bc.csv'
 arguments$exclude  <- 'Stan'
 arguments$gens     <- 8
 

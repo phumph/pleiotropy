@@ -1,8 +1,0 @@
-"0","# fit Chi-squared distribution to this, truncating at the upper part (i.e. >10):"
-"0","chis <- as.data.frame((tsums[tsums$Full.BC %in% paste0(neuts),'t_chi']))"
-"0","emp_df <- fitdistr(chis$t_chi[chis$t_chi != Inf], ""chi-squared"", start = list(df = 1))"
-"0","# make vector of densities for Chisq with df = emp_df$estimate"
-"0","chis_dist <- data.frame(dchi = dchisq(seq(0,20,0.01), df = emp_df$estimate), est = seq(0,20,0.01))"
-"0","# plot as overlap on previous graph:"
-"0","t_sum_dist_p <- t_sum_dist_p + geom_line(data = chis_dist, aes(x = est, y = dchi), col = ""darkorange"", lty = ""dashed"") "
-"0","t_sum_dist_p"

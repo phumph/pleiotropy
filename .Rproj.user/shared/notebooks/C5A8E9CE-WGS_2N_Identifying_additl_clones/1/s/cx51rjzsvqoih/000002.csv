@@ -1,4 +1,0 @@
-"0","system(""mv fit_filter00.txt data"")
-"
-"2","mv: rename fit_filter00.txt to data/fit_filter00.txt: No such file or directory
-"

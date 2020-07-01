@@ -1,0 +1,86 @@
+---
+title: "More BC Reconciling"
+output: html_notebook
+---
+
+
+Steps:
+
+1. Pull in `Subpool.Environment` from BFA data
+2. Hit each called barcode against it, focusing on the conflicting calls.
+3. Determine whether we have enough evidence to support one call over the other.
+4. Parse sub-calls and look at intersection of each set called for each WGS sample.
+
+Let's bring in the BFA data to capture `Subpool.Environment` BC sets:
+```{r}
+bfa.dat <- read.csv("data/dBFA2_hBFA1_fitnesses_allBCs.csv")
+bfa.dat <- read.csv("data/dBFA2_counts_with_env_info.csv")
+head(bfa.dat)
+```
+
+Now load up WGS barcodes with conflicts:
+```{r}
+bcs <- read.csv("data/mutations/final_BC_calls_2019-MAY-21/bcs_transformed_2019-JUN-18.csv")
+head(bcs)
+```
+
+Hit each barcode against the fitness data to figure out subpool information:
+```{r}
+bfa.dat2 <- bfa.dat[,c('Full.BC','Diverse.BC','Environment.BC','Total.Counts',grep('Subpool', names(bfa.dat), value = T))]
+
+x <- bcs$LH_Diverse.BC[5]
+y <- bfa.dat2
+input_col <- 'LH_Diverse.BC'
+target_col = 'Diverse.BC'
+
+bc_compare <- function(x, y, input_col = NULL, target_col = NULL){
+  # for each input x, hit diverse BC call against set of input reference BCs in y
+  hit <- y[grep(paste0(x), y[,target_col]),]
+  
+  if (dim(hit)[1]>0){
+    y2 <- data.frame(x,hit)
+    names(y2)[1] <- input_col
+  } else {
+    y2 <- data.frame(x, Full.BC = NA,
+                     Diverse.BC = NA,
+                     Environment.BC = NA, 
+                     Total.Counts = NA,
+                     Subpool.Environment = NA,
+                     Which.Subpools = NA)
+    names(y2)[1] <- input_col
+  } 
+  return(y2)
+}
+
+bcs_1 <- sapply(bcs$LH_Diverse.BC, function(x) bc_compare(paste0(x), y = bfa.dat2, input_col = 'LH_Diverse.BC', target_col = 'Diverse.BC'))
+
+
+debug(sapply(bcs$LH_Diverse.BC, function(x) bc_compare(paste0(x), y = bfa.dat2, input_col = 'LH_Diverse.BC', target_col = 'Diverse.BC'))
+)
+
+# do as loop to find where it breaks:
+  input_col <- 'LH_Diverse.BC'
+  target_col = 'Diverse.BC'
+  hits <- data.frame(NA)
+  
+for (b in 1:length(bcs[,1])){
+  hits[b,] <- bc_compare(paste0(bcs[b,input_col]), y = bfa.dat2, input_col = 'LH_Diverse.BC', target_col = 'Diverse.BC')
+}
+
+  
+# don't bother with any of this; just join
+  
+bcs2 <- dplyr::left_join(bcs, bfa.dat2, by = c('LH_Diverse.BC' = 'Diverse.BC'))
+bcs3 <- dplyr::left_join(bcs2, bfa.dat2, by = c('YL_Diverse.BC' = 'Diverse.BC'))
+
+table(bcs2$Subpool.Environment, bcs2$SOURCE)
+table(bcs3$Subpool.Environment, bcs3$SOURCE)
+
+table(bcs3$Subpool.Environment.x, bcs3$Subpool.Environment.y)
+
+# now plot for only those discrepant ones:
+with(bcs3[bcs3$DBC_conflict==TRUE,], table(Subpool.Environment.x, Subpool.Environment.y))
+```
+
+OK so there is no discrepancy between calls as to which subpool environment they came from. I now need to do the reciprocal grep to see whether they're at least seeing the same barcodes.
+
