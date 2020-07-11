@@ -1,13 +1,12 @@
 #! /usr/bin/env Rscript
 
 # cluster_lineages.R
-#
+
 # This script takes input fitnesses and
 # generates cluters for each source-ploidy lineage set.
 #
-# The script subsequently generate t-SNE based clustering
-# of all lineages and marks them by the clusters inferred
-# within each environment.
+# The script also calculates the cluster-wise weighted (e.g., Maha) mean and se.
+# and outputs this as a second file
 
 # ------------------------- #
 # header                    #
@@ -23,24 +22,7 @@ source(file.path('scripts/src/pleiotropy_functions.R'))
 # function definitions      #
 # ------------------------- #
 
-run_args_parse <- function(debug_status) {
-
-  if (debug_status == TRUE) {
-    arguments <- list()
-    arguments$use_iva     <- TRUE
-    arguments$infile      <- "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv"
-    arguments$outdir      <- "data/fitness_data/fitness_calls/clusters"
-    arguments$exclude     <- "Stan|X48Hr|X02M"
-    arguments$gens        <- 8
-    arguments$method      <- "em"
-  } else if (debug_status == FALSE) {
-    arguments <- docopt(doc, version = "cluster_lineages.R")
-  }
-  return(arguments)
-}
-
-
-get_neutral_tree_depth <- function(df, method = "euclidean", quant = 0.99) {
+get_neutral_tree_depth <- function(df, method = "euclidean", quant = 0.95) {
 
   df %>%
     dist(method = method) %>%
@@ -101,6 +83,9 @@ maha_mean <- function(x, x_var, covm) {
     }
     sigma_hat <- solve(sigma_hat_inv)
     maha_mean_vec <- sigma_hat %*% maha_x_tot
+    maha_mean_vec2 <- c(maha_mean_vec)
+    names(maha_mean_vec2) <- row.names(maha_mean_vec)
+    maha_mean_vec <- maha_mean_vec2
   }
 
   return(list(mean = maha_mean_vec,
@@ -122,8 +107,8 @@ calc_clust_dist <- function(...) {
 
   d_ij = t(x_i$mean - x_j$mean) %*%
     solve(x_i$covm + x_j$covm) %*%
-    (x_i$mean - x_j$mean)
-
+    (x_i$mean - x_j$mean) 
+  
   # equivalent to mahalanobis(x_i$mean, x_j$mean, cov = x_i$covm + x_j$covm)
 
   return(d_ij)
@@ -155,7 +140,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
   if (se == TRUE) {
     var_matr <- var_matr^2
   }
-
+  
   while (length(unique(clust_vec)) > 1) {
 
     DISTS <- list()
@@ -170,7 +155,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
     n_clusts <- length(unique(clust_vec))
     clust_ids <- unique(clust_vec)
 
-    cat(sprintf("Num. clusters = %s\n", n_clusts))
+    cat(sprintf("\tNum. clusters = %s\n", n_clusts))
 
     # calculate pairwise dist between each cluster
     for (i in 1:(n_clusts - 1)) {
@@ -207,7 +192,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
     row_min <- which(D_res$d_ij == D_min)
     clust_vec[clust_vec %in% c(D_res$i[row_min], D_res$j[row_min])] <- D_res$i[row_min]
   }
-
+  cat("Done!\n")
   if (all(!is.null(row.names(mean_matr)), !is.null(row.names(var_matr)))) {
     res <- data.frame(Full.BC = row.names(mean_matr),
                       cluster = clust_vec,
@@ -218,15 +203,56 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
 }
 
 
+average_clusters <- function(clusters, mean_matr, var_matr, covm) {
+  
+  if (is.data.frame(clusters) & "cluster" %in% names(clusters)) {
+    clust_ids <- clusters$cluster
+  } else {
+    clust_ids <- clusters
+  }
+  
+  df_full <- data.frame()
+  
+  for (clust in seq_along(unique(clust_ids))) {
+    
+    clust_mean <- maha_mean(x = mean_matr[clust_ids == clust, ],
+                            x_var = var_matr[clust_ids == clust, ],
+                            covm = covm)
+    
+    names(clust_mean$mean) %>%
+      sapply(function(x) {
+        x %>%
+          strsplit("\\.") %>%
+          unlist() %>%
+          dplyr::first()
+      }) -> envs
+    
+    names(clust_mean$mean) <- envs
+    
+    data.frame(bfa_env = names(clust_mean$mean),
+               s = clust_mean$mean,
+               s_se = sqrt(diag(clust_mean$covm)),
+               cluster = clust,
+               n_bcs = length(clust_ids[clust_ids == clust])) ->
+      df_tmp
+    
+    df_full %>%
+      dplyr::bind_rows(df_tmp) ->
+      df_full
+  }
+  
+  return(df_full)
+}
 
-write_out <- function(df, base_name = NULL, out_dir = NULL) {
 
-  stopifnot(!is.null(out_dir))
+write_out <- function(df, base_name = NULL, out_dir = NULL, str_to_append = NULL) {
+
+  stopifnot(!is.null(out_dir) & !is.null(str_to_append))
 
   if (!dir.exists(out_dir)) {
     dir.create(file.path(out_dir))
   }
-
+  
   if (is.null(base_name)) {
     base_name = "output_"
   } else {
@@ -237,7 +263,7 @@ write_out <- function(df, base_name = NULL, out_dir = NULL) {
       base_name
   }
 
-  outpath <- file.path(out_dir, paste0(base_name, "_adapted_w_clusts.csv"))
+  outpath <- file.path(out_dir, paste0(base_name, str_to_append, ".csv"))
   readr::write_csv(df, path = outpath, col_names = T)
 }
 
@@ -255,7 +281,7 @@ main <- function(arguments) {
 
   # read infiles
   infile <- read.table(arguments$infile,
-                       sep = ',',
+                       sep = ",",
                        header = T,
                        stringsAsFactors = F)
 
@@ -299,9 +325,12 @@ main <- function(arguments) {
     adapted_by_env
 
   adapted_df_w_clust <- list()
+  clust_wise_means <- list()
 
   for (env in seq_along(adapted_by_env)) {
-
+    
+    cat(sprintf("\nWorking on env %s...\n", names(adapted_by_env)[env]))
+    
     adapted_by_env[[env]] %>%
       prep_fit_matrix(means_only = FALSE,
                       excludes = arguments$exclude,
@@ -322,13 +351,30 @@ main <- function(arguments) {
     adapted_by_env[[env]] %>%
       dplyr::left_join(clusts_final, by = "Full.BC") ->
       adapted_df_w_clust[[env]]
+    
+    clusts_final %>%
+      average_clusters(mean_matr = matr_prepped$means,
+                       var_matr = matr_prepped$sigmas^2,
+                       covm = neutral_cov) ->
+      clust_wise_mean
+    
+    clust_wise_mean$source <- names(adapted_by_env)[env]
+    
+    clust_wise_means[[env]] <- clust_wise_mean
   }
 
   adapted_df_w_clust_full <- do.call(rbind, adapted_df_w_clust)
-
+  clust_wise_means_full   <- do.call(rbind, clust_wise_means)
+  
   adapted_df_w_clust_full %>%
     write_out(out_dir = arguments$outdir,
-              base_name = basename(arguments$infile))
+              base_name = basename(arguments$infile),
+              str_to_append = "_adapted_w_clusts")
+  
+  clust_wise_means_full %>%
+    write_out(out_dir = arguments$outdir,
+              base_name = basename(arguments$infile),
+              str_to_append = "_adapted_w_clust_means")
 }
 
 
@@ -336,26 +382,39 @@ main <- function(arguments) {
 # main                      #
 # ------------------------- #
 
-'cluster_lineages.R
+"cluster_lineages.R
 
 Usage:
-    cluster_lineages.R [--help | --version]
-    cluster_lineages.R [options] INFILE ...
+    cluster_lineages.R [--help]
+    cluster_lineages.R [options] <infile>
 
 Options:
     -h --help                     Show this screen.
-    -v --version                  Show version.
     -o --outdir=<outdir>          Output directory [default: ./]
     -u --use_iva                  Flag to determine whether to use inverse variance weighted avg or arithmentic avg [default: TRUE]
     -g --gens=<gens>              Number of generations per cycle (used to divide input fitness estimates) [default: 8]
     -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
 
 Arguments:
-    INFILE                        Input file(s) containing fitness calls for BFA run.
-' -> doc
+    infile                        Input file(s) containing fitness calls for BFA run.
+" -> doc
 
+# define default args for debug_status == TRUE
+arguments <- list(
+  use_iva = TRUE,
+  infile = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv",
+  outdir = "data/fitness_data/fitness_calls",
+  gens = "8",
+  exclude = "X48Hr"
+)
 
-debug_status <- TRUE
-arguments <- run_args_parse(debug_status)
+debug_status <- FALSE
+arguments <- run_args_parse(arguments, debug_status)
+
+cat("\n**********************\n")
+cat("* cluster_lineages.R *\n")
+cat("**********************\n\n")
 
 main(arguments)
+
+cat("**Script completed successfully!**\n\n")

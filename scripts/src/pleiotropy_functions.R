@@ -6,6 +6,16 @@
 # fun defs #
 # ======== #
 
+run_args_parse <- function(arguments = NULL, debug_status = FALSE) {
+  if (debug_status == TRUE) {
+    stopifnot(!is.null(arguments) & is.list(arguments))
+  } else if (debug_status == FALSE) {
+    arguments <- docopt(doc)
+  }
+  return(arguments)
+}
+
+
 OpenRead <- function(arg) {
   if (arg %in% c("-", "/dev/stdin")) {
     file("stdin", open = "r")
@@ -25,6 +35,8 @@ prep_fit_matrix <- function(dat,
                             iva_s,
                             gens) {
 
+  gens <- as.double(gens)
+  
   # take input counts file and generate list of 2 matrixes:
     # (n x k) matrix of k-variate mean vectors for n barcodes
     # (n x k) k-variate sigma vectors for n barcodes

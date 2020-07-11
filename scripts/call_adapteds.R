@@ -15,61 +15,22 @@ suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(ggplot2)))
 suppressWarnings(suppressMessages(library(progress)))
 suppressWarnings(suppressMessages(library(docopt)))
+
 source(file.path('scripts/src/pleiotropy_functions.R'))
-
-# ------------------------- #
-# setup command line inputs #
-# ------------------------- #
-
-"call_adapteds.R
-
-Usage:
-    call_adapteds.R [--help | --version]
-    call_adapteds.R [options] <infile> <neutral_col>
-
-Options:
-    -h --help                     Show this screen.
-    -v --version                  Show version.
-    -o --outdir=<outdir>          Output directory [default: ./]
-    -b --base_name=<base_name>    Base name for output file [default: tmp]
-    -u --use_iva                  Flag to determine whether to use inverse variance weighted avg or arithmentic avg [default: TRUE]
-    -g --gens=<gens>              Number of generations per cycle (used to divide input fitness estimates) [default: 8]
-    -c --cutoff=<pval>            P-value cutoff for outlier trimming [default: 0.05]
-    -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
-    -r --reps_iter=<sim_reps>     Number of replicate simulations for determining neutral set [default: 1000]
-    -f --reps_final=<final_reps>  Number of replicate simulations for final neutral probability distribution [default: 1000]
-
-Arguments:
-    infile                        Input file containing fitness calls for BFA run.
-    neutral_col                   String denoting set of putatively neutral BCs
-" -> doc
 
 # -------------------- #
 # function definitions #
 # -------------------- #
 
-run_args_parse <- function(debug_status) {
+main <- function(arguments) {
 
-  if (debug_status == TRUE) {
-    arguments <- list()
-    arguments$use_iva     <- TRUE
-    arguments$infile      <- "data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv"
-    arguments$outdir      <- "data/fitness_data/fitness_calls"
-    arguments$neutral_col <- 'Ancestor_YPD_2N'
-    arguments$base_name   <- 'dBFA2_cutoff-5'
-    arguments$reps_iter   <- 1000
-    arguments$reps_final  <- 1000
-    arguments$exclude     <- 'CLM|FLC4|Stan'
-    arguments$cutoff      <- 0.05
-    arguments$gens        <- 8
-  } else if (debug_status == FALSE) {
-    arguments <- docopt(doc, version = 'call_adapteds v.1.0')
-  }
-  return(arguments)
-}
-
-main <- function(bfa_dat, arguments) {
-
+  infile <- OpenRead(arguments$infile)
+  
+  dat <- read.table(infile,
+                    header = TRUE,
+                    sep = ",",
+                    stringsAsFactors = F)
+  
   set.seed(12345)
 
   # take bfa_dat
@@ -77,7 +38,7 @@ main <- function(bfa_dat, arguments) {
   cat("Preparing input file...")
 
   fit_mats <-
-    bfa_dat %>%
+    dat %>%
     prep_fit_matrix(neutral_col = arguments$neutral_col,
                     excludes    = arguments$exclude,
                     iva_s       = arguments$use_iva,
@@ -132,7 +93,7 @@ main <- function(bfa_dat, arguments) {
   cat("Determining adapted barcodes...")
   # flag input barcodes as adapted or not based on distance
   adapteds <-
-    bfa_dat %>%
+    dat %>%
     prep_fit_matrix(excludes    = arguments$exclude,
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
@@ -145,54 +106,78 @@ main <- function(bfa_dat, arguments) {
 
   suppressWarnings(
     adapteds_df <-
-      bfa_dat %>%
+      dat %>%
       dplyr::left_join(dplyr::select(adapteds, Full.BC, maha_dist, dist_pval, is_adapted),
-                       by = 'Full.BC')
+                       by = "Full.BC")
   )
 
   adapteds_df$neutral_set <- FALSE
   adapteds_df$neutral_set[adapteds_df$Full.BC %in% neutral_set] <- TRUE
 
-  return(adapteds_df)
+  if (!dir.exists(arguments$outdir)) {
+    dir.create(arguments$outdir)
+  }
+  
+  outfile_path <- file.path(arguments$outdir,
+                            paste0(arguments$base_name,
+                                   "_adapteds.csv"))
+  
+  cat(sprintf("Writing output file: %s\n", outfile_path))
+  
+  write.table(adapteds_df,
+              file = outfile_path,
+              quote = F,
+              sep = ",",
+              col.names = T,
+              row.names = F)
 }
 
-# ---- #
-# MAIN #
-# ---- #
+# ==== #
+# main #
+# ==== #
 
-# run
+"call_adapteds.R
+
+Usage:
+    call_adapteds.R [--help]
+    call_adapteds.R [options] <infile> <neutral_col>
+
+Options:
+    -h --help                     Show this screen.
+    -o --outdir=<outdir>          Output directory [default: ./]
+    -b --base_name=<base_name>    Base name for output file [default: tmp]
+    -u --use_iva                  Flag to determine whether to use inverse variance weighted avg or arithmentic avg [default: TRUE]
+    -g --gens=<gens>              Number of generations per cycle (used to divide input fitness estimates) [default: 8]
+    -c --cutoff=<pval>            P-value cutoff for outlier trimming [default: 0.05]
+    -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
+    -r --reps_iter=<sim_reps>     Number of replicate simulations for determining neutral set [default: 1000]
+    -f --reps_final=<final_reps>  Number of replicate simulations for final neutral probability distribution [default: 1000]
+
+Arguments:
+    infile                        Input file containing fitness calls for BFA run.
+    neutral_col                   String denoting set of putatively neutral BCs
+" -> doc
+
+args <- list(
+  use_iva     = TRUE,
+  infile      = "data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv",
+  outdir      = "data/fitness_data/fitness_calls",
+  neutral_col = "Ancestor_YPD_2N",
+  base_name   = "dBFA2_cutoff-5",
+  reps_iter   = 1000,
+  reps_final  = 1000,
+  exclude     = "CLM|FLC4|Stan",
+  cutoff      = 0.05,
+  gens        = 8
+)
+
+debug_status <- FALSE
+
 cat("*******************\n")
 cat("* call_adapteds.R *\n")
 cat("*******************\n\n")
 
-debug_status <- FALSE
-arguments <- run_args_parse(debug_status)
-infile    <- OpenRead(arguments$infile)
-dat <- read.table(infile,
-                 header = TRUE,
-                 sep = ",",
-                 stringsAsFactors = F)
-
-res_out <- main(dat, arguments)
-
-# write
-if (!dir.exists(arguments$outdir)) {
-  dir.create(arguments$outdir)
-}
-
-outfile_path <- file.path(arguments$outdir,
-                          paste0(arguments$base_name,
-                                 '_adapteds.csv'))
-
-cat(sprintf("Writing output file: %s\n", outfile_path))
-
-write.table(res_out,
-            file = outfile_path,
-            quote = F,
-            sep = ',',
-            col.names = T,
-            row.names = F)
+arguments <- run_args_parse(args, debug_status)
+main(arguments)
 
 cat("**Script completed successfully!**\n\n")
-
-### END ###

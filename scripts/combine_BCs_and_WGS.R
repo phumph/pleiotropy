@@ -1,9 +1,12 @@
+#!/usr/bin/env Rscript
+
 # script to take BC file and add BC info to WGS mutation calls.
-# arguments:
-  # 1. BC file
-  # 2. Mutation call file
-  # 3. file containing all div--env BC pairs from BFAs
-  # 4. flag for rules on how to call majority BCs
+
+# inputs (hard-coded):
+  # 1. Barcodes file
+  # 2. Mutation calls file
+  # 3. File containing all div--env BC pairs from BFAs
+  # 4. Flag for rules on how to call majority BCs
 
 ### >>>>>>
 ### Header
@@ -14,17 +17,24 @@ suppressWarnings(suppressMessages(library(tidyr)))
 
 f_bfa_bcs  <- file.path('data/mutation_data/barcode_extraction/PLT_all_BFA_bcs.csv')
 f_wgs_bcs  <- file.path('data/mutation_data/barcode_extraction/bcs_extracted_compiled.csv')
-f_variants <- file.path('data/mutation_data/master_mutation_calls_2019-SEP-16.txt')
+f_variants <- file.path('data/mutation_data/master_mutation_calls.txt')
 f_subpools_dbfa2 <- file.path('data/fitness_data/bfa_bc_counts/dBFA2_counts_with_env_info.csv')
 f_subpools_hbfa1 <- file.path('data/fitness_data/bfa_bc_counts/hBFA1_counts_with_env_info.csv')
 f_subpools_hbfa2 <- file.path('data/fitness_data/bfa_bc_counts/hBFA2_counts_with_env_info.csv')
 
-bfa_bcs  <- read.table(f_bfa_bcs,  sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
-wgs_bcs  <- read.table(f_wgs_bcs,  sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
-variants <- read.table(f_variants, sep = '\t', header = T, stringsAsFactors = F, na.strings = c('',' '), allowEscapes = FALSE, skipNul = TRUE)
-subpools_dbfa2 <- read.table(f_subpools_dbfa2, sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
-subpools_hbfa1 <- read.table(f_subpools_hbfa1, sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
-subpools_hbfa2 <- read.table(f_subpools_hbfa2, sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
+bfa_bcs  <- read.table(f_bfa_bcs,
+                       sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
+wgs_bcs  <- read.table(f_wgs_bcs,
+                       sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
+variants <- read.table(f_variants,
+                       sep = '\t', header = T, stringsAsFactors = F, na.strings = c('',' '),
+                       allowEscapes = FALSE, skipNul = TRUE)
+subpools_dbfa2 <- read.table(f_subpools_dbfa2,
+                             sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
+subpools_hbfa1 <- read.table(f_subpools_hbfa1,
+                             sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
+subpools_hbfa2 <- read.table(f_subpools_hbfa2,
+                             sep = ',', header = T, stringsAsFactors = F, na.strings = c('',' '))
 
 ### >>>>>>><<<<<<<<>>>>>>>>><<<<<<<<<>>>>>>
 ### Reconciling strain and file identifiers
@@ -210,7 +220,7 @@ variants <-
   variants %>%
   dplyr::left_join(
     dplyr::select(all_vars_matched, Strain, Full.BC, Diverse.BC, Environment.BC),
-    by = 'Strain')
+    by = "Strain")
 
 # filter out those without matches
 variants_bc <-
@@ -222,8 +232,8 @@ variants_bc <-
 ###
 
 write.table(variants_bc,
-            file = file.path('data/mutation_data/mutations_by_bc.csv'),
-            sep = ',',
+            file = file.path("data/mutation_data/mutations_by_bc.csv"),
+            sep = ",",
             quote = T,
             row.names = F,
             col.names = T)
