@@ -26,7 +26,7 @@ data/mutation_data/mutations_by_bc.csv :
 hBFA: $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
 
 
-$(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv :
+$(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv:
 	Rscript scripts/call_adapteds.R \
 		--use_iva \
 	  --exclude=X48Hr \
@@ -38,7 +38,7 @@ $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv :
 		$(hBFA_NEUTRAL_ENV)
 
 
-$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv :
+$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv:
 	Rscript scripts/filter_autodiploids.R \
 	  --use_iva \
 	  --exclude=X48Hr \
@@ -58,6 +58,15 @@ $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(hBFA_BASENAME)_adapt
 		--outdir=$(OUTDIR) \
 		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
 
+
+$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_summary.csv
+	Rscript scripts/summarise_clusters.R \
+		--outdir=$(OUTDIR) \
+		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
+
+
+# next produce rendered report showing all of the fitness clusters and their summaries
+# linking mutation data as well.
 
 
 .PHONY: dBFA
