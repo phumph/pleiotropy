@@ -107,30 +107,29 @@ calc_clust_dist <- function(...) {
 
   d_ij = t(x_i$mean - x_j$mean) %*%
     solve(x_i$covm + x_j$covm) %*%
-    (x_i$mean - x_j$mean) 
-  
+    (x_i$mean - x_j$mean)
+
   # equivalent to mahalanobis(x_i$mean, x_j$mean, cov = x_i$covm + x_j$covm)
 
   return(d_ij)
 }
 
 
-# input is prepped it matr with cluster vector
 reduce_clusters_by_dist <- function(clust_vec = NULL,
                                     mean_matr = NULL,
                                     var_matr = NULL,
                                     covm = NULL,
                                     se = FALSE,
                                     dist_fun = "maha_mean",
-                                    p_cutoff = 0.95) {
+                                    p_cutoff = 0.99) {
 
   stopifnot(all(!is.null(covm), !is.null(mean_matr), !is.null(var_matr)))
 
-  df = ncol(mean_matr)
+  df <- ncol(mean_matr)
   dist_cutoff <- qchisq(p = p_cutoff, df = df)
 
   if (is.null(clust_vec)) {
-    clust_vec <- c(1:nrow(mean_matr))
+    clust_vec <- seq_len(mean_matr)
   } else {
     stopifnot(is.vector(clust_vec) &
                 length(clust_vec) == nrow(mean_matr) &
@@ -140,7 +139,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
   if (se == TRUE) {
     var_matr <- var_matr^2
   }
-  
+
   while (length(unique(clust_vec)) > 1) {
 
     DISTS <- list()
@@ -149,7 +148,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
 
     clust_vec %>%
       plyr::mapvalues(from = clust_ids,
-                      to = c(1:length(unique(clust_vec)))) ->
+                      to = seq_len(length(unique(clust_vec)))) ->
       clust_vec
 
     n_clusts <- length(unique(clust_vec))
@@ -190,7 +189,8 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
       break
     }
     row_min <- which(D_res$d_ij == D_min)
-    clust_vec[clust_vec %in% c(D_res$i[row_min], D_res$j[row_min])] <- D_res$i[row_min]
+    clust_vec[clust_vec %in% c(D_res$i[row_min],
+                               D_res$j[row_min])] <- D_res$i[row_min]
   }
   cat("Done!\n")
   if (all(!is.null(row.names(mean_matr)), !is.null(row.names(var_matr)))) {
@@ -204,21 +204,21 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
 
 
 average_clusters <- function(clusters, mean_matr, var_matr, covm) {
-  
+
   if (is.data.frame(clusters) & "cluster" %in% names(clusters)) {
     clust_ids <- clusters$cluster
   } else {
     clust_ids <- clusters
   }
-  
+
   df_full <- data.frame()
-  
+
   for (clust in seq_along(unique(clust_ids))) {
-    
+
     clust_mean <- maha_mean(x = mean_matr[clust_ids == clust, ],
                             x_var = var_matr[clust_ids == clust, ],
                             covm = covm)
-    
+
     names(clust_mean$mean) %>%
       sapply(function(x) {
         x %>%
@@ -226,35 +226,38 @@ average_clusters <- function(clusters, mean_matr, var_matr, covm) {
           unlist() %>%
           dplyr::first()
       }) -> envs
-    
+
     names(clust_mean$mean) <- envs
-    
+
     data.frame(bfa_env = names(clust_mean$mean),
                s = clust_mean$mean,
                s_se = sqrt(diag(clust_mean$covm)),
                cluster = clust,
                n_bcs = length(clust_ids[clust_ids == clust])) ->
       df_tmp
-    
+
     df_full %>%
       dplyr::bind_rows(df_tmp) ->
       df_full
   }
-  
+
   return(df_full)
 }
 
 
-write_out <- function(df, base_name = NULL, out_dir = NULL, str_to_append = NULL) {
+write_out <- function(df,
+                      base_name = NULL,
+                      out_dir = NULL,
+                      str_to_append = NULL) {
 
   stopifnot(!is.null(out_dir) & !is.null(str_to_append))
 
   if (!dir.exists(out_dir)) {
     dir.create(file.path(out_dir))
   }
-  
+
   if (is.null(base_name)) {
-    base_name = "output_"
+    base_name <- "output_"
   } else {
     base_name %>%
       strsplit("_adapted") %>%
@@ -274,9 +277,11 @@ write_out <- function(df, base_name = NULL, out_dir = NULL, str_to_append = NULL
 main <- function(arguments) {
 
   # check + grab input files
-  if (sum(!sapply(arguments$infiles, file.exists)) > 0 ) {
-    stop("One or more infile does not exist. Please check infile path and try again.",
-         call. = FALSE)
+  if (sum(!sapply(arguments$infiles, file.exists)) > 0) {
+    stop(
+        "One or more infile does not exist. Please check infile path and try again.",
+         call. = FALSE
+       )
   }
 
   # read infiles
@@ -319,7 +324,8 @@ main <- function(arguments) {
     get_neutral_cov_matr() ->
     neutral_cov
 
-  # use neutral tree depth to define initial clusters for each environment; pass as arg
+  # use neutral tree depth
+  # to define initial clusters for each environment
   adapted_df %>%
     split(adapted_df$Subpool.Environment) ->
     adapted_by_env
@@ -328,9 +334,9 @@ main <- function(arguments) {
   clust_wise_means <- list()
 
   for (env in seq_along(adapted_by_env)) {
-    
+
     cat(sprintf("\nWorking on env %s...\n", names(adapted_by_env)[env]))
-    
+
     adapted_by_env[[env]] %>%
       prep_fit_matrix(means_only = FALSE,
                       excludes = arguments$exclude,
@@ -351,26 +357,26 @@ main <- function(arguments) {
     adapted_by_env[[env]] %>%
       dplyr::left_join(clusts_final, by = "Full.BC") ->
       adapted_df_w_clust[[env]]
-    
+
     clusts_final %>%
       average_clusters(mean_matr = matr_prepped$means,
                        var_matr = matr_prepped$sigmas^2,
                        covm = neutral_cov) ->
       clust_wise_mean
-    
+
     clust_wise_mean$source <- names(adapted_by_env)[env]
-    
+
     clust_wise_means[[env]] <- clust_wise_mean
   }
 
   adapted_df_w_clust_full <- do.call(rbind, adapted_df_w_clust)
   clust_wise_means_full   <- do.call(rbind, clust_wise_means)
-  
+
   adapted_df_w_clust_full %>%
     write_out(out_dir = arguments$outdir,
               base_name = basename(arguments$infile),
               str_to_append = "_adapted_w_clusts")
-  
+
   clust_wise_means_full %>%
     write_out(out_dir = arguments$outdir,
               base_name = basename(arguments$infile),

@@ -13,7 +13,6 @@
 suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(ggplot2)))
-suppressWarnings(suppressMessages(library(progress)))
 suppressWarnings(suppressMessages(library(docopt)))
 
 source(file.path('scripts/src/pleiotropy_functions.R'))
@@ -23,20 +22,18 @@ source(file.path('scripts/src/pleiotropy_functions.R'))
 # -------------------- #
 
 main <- function(arguments) {
-
-  infile <- OpenRead(arguments$infile)
   
-  dat <- read.table(infile,
+  dat <- read.table(arguments$infile,
                     header = TRUE,
                     sep = ",",
                     stringsAsFactors = F)
   
   set.seed(12345)
-
+  
   # take bfa_dat
   # run it through name conversion
   cat("Preparing input file...")
-
+  
   fit_mats <-
     dat %>%
     prep_fit_matrix(neutral_col = arguments$neutral_col,
@@ -47,16 +44,16 @@ main <- function(arguments) {
                     means_only  = FALSE)
   cat("Done!\n")
   cat("Detecting outliers in neutral barcode set...")
-
+  
   neutral_set <-
     fit_mats %>%
     filter_neutral_outliers(reps_iter = as.double(arguments$reps_iter),
                             cutoff    = as.double(arguments$cutoff))
   cat("Done!\n")
-
+  
   # generate testing distribution with refined neutral set
   cat("Generating testing distribution for determining adapteds...")
-
+  
   neutral_test_distn <-
     fit_mats %>%
     generate_neutral_test_distn(neutrals   = neutral_set,
@@ -65,10 +62,10 @@ main <- function(arguments) {
   if (!dir.exists(file.path(arguments$outdir, arguments$base_name))) {
     dir.create(file.path(arguments$outdir, arguments$base_name))
   }
-
+  
   saveRDS(neutral_test_distn,
           file = file.path(arguments$outdir, arguments$base_name, 'neutral_test_distn.Rds'))
-
+  
   # save plot of distribution
   data.frame(distances = neutral_test_distn$distances) %>%
     ggplot() +
@@ -79,7 +76,7 @@ main <- function(arguments) {
     geom_vline(xintercept = quantile(neutral_test_distn$distances, probs = 1 - as.double(arguments$cutoff)), col = 'darkorange') +
     ggtitle(paste0("Neutral D distn (", length(neutral_set)," BCs)\n", arguments$base_name, "\ncutoff = ", arguments$cutoff)) ->
     neutral_dist_plot
-
+  
   ggsave(neutral_dist_plot,
          filename = file.path(arguments$outdir, arguments$base_name, 'neutral_test_distn.png'),
          device = 'png',
@@ -87,11 +84,10 @@ main <- function(arguments) {
          width = 5,
          height = 3.5,
          units = 'in')
-
+  
   cat("Done!\n")
-
   cat("Determining adapted barcodes...")
-  # flag input barcodes as adapted or not based on distance
+  
   adapteds <-
     dat %>%
     prep_fit_matrix(excludes    = arguments$exclude,
@@ -99,21 +95,47 @@ main <- function(arguments) {
                     gens        = as.double(arguments$gens),
                     is_neutral  = FALSE,
                     means_only  = TRUE) %>%
-      flag_adapteds(testing_distn = neutral_test_distn,
-                    cutoff        = as.double(arguments$cutoff))
-
+    flag_adapteds(testing_distn = neutral_test_distn,
+                  cutoff        = as.double(arguments$cutoff))
+  
+  suppressWarnings(
+    dat %>%
+      prep_fit_matrix(iva_s       = arguments$use_iva,
+                      gens        = as.double(arguments$gens),
+                      is_neutral  = FALSE,
+                      means_only  = TRUE) %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column() %>%
+      dplyr::rename("Full.BC" = "rowname") %>%
+      dplyr::left_join(
+        dplyr::select(adapteds, Full.BC, maha_dist, dist_pval, is_adapted),
+        by = "Full.BC") %>%
+      dplyr::filter(is_adapted == TRUE) ->
+      dat_for_home
+    )
+  
+  source_ref <- dplyr::select(dat, Full.BC, Subpool.Environment)
+  adapted_at_home <- flag_adapted_at_home(dat_for_home, source_ref = source_ref)
+  
+  adapted_at_home %>%
+    dplyr::filter(adapted_at_home == FALSE) ->
+    non_adapted_BCs
+  
+  adapteds$is_adapted[adapteds$Full.BC %in% non_adapted_BCs$Full.BC] <- FALSE
+  
   cat("Done!\n")
-
+  
   suppressWarnings(
     adapteds_df <-
       dat %>%
-      dplyr::left_join(dplyr::select(adapteds, Full.BC, maha_dist, dist_pval, is_adapted),
+      dplyr::left_join(dplyr::select(adapteds,
+                                     Full.BC, maha_dist, dist_pval, is_adapted),
                        by = "Full.BC")
   )
-
+  
   adapteds_df$neutral_set <- FALSE
   adapteds_df$neutral_set[adapteds_df$Full.BC %in% neutral_set] <- TRUE
-
+  
   if (!dir.exists(arguments$outdir)) {
     dir.create(arguments$outdir)
   }
@@ -164,8 +186,8 @@ args <- list(
   outdir      = "data/fitness_data/fitness_calls",
   neutral_col = "Ancestor_YPD_2N",
   base_name   = "dBFA2_cutoff-5",
-  reps_iter   = 1000,
-  reps_final  = 1000,
+  reps_iter   = 5000,
+  reps_final  = 5000,
   exclude     = "CLM|FLC4|Stan",
   cutoff      = 0.05,
   gens        = 8

@@ -186,9 +186,7 @@ main <- function(arguments) {
   
   stopifnot(!is.null(arguments$infile))
   
-  infile    <- OpenRead(arguments$infile)
-  
-  dat <- read.table(infile,
+  dat <- read.table(arguments$infile,
                     header = TRUE,
                     sep = ',',
                     stringsAsFactors = F)
