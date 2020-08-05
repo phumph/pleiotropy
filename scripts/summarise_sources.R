@@ -17,7 +17,7 @@ suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(docopt)))
 suppressWarnings(suppressMessages(library(ggplot2)))
 
-source(file.path('scripts/src/pleiotropy_functions.R'))
+source(file.path("scripts/src/pleiotropy_functions.R"))
 
 # ------------- #
 # function defs #
@@ -59,13 +59,14 @@ summarise_sources <- function(df) {
   
   df3$source <- factor(df3$source, levels = (source_order$source))
   
-  sources_plot <- 
+  sources_plot <-
     ggplot() +
     geom_bar(data = df3, aes(x = source, y = bc_count, fill = bc_set),
-             stat = 'identity',
+             stat = "identity",
              position = "dodge", alpha = 0.5) +
-    theme_bw() + scale_fill_manual(values = c('gray40','dodgerblue','darkorange2'),
-                                   name = 'bc_set') +
+    theme_bw() +
+    scale_fill_manual(values = c("gray40", "dodgerblue", "darkorange2"),
+                      name = "bc_set") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
     ylab("n BCs w/fitness") +
     xlab("source env") +
@@ -99,7 +100,7 @@ main <- function(arguments) {
                                header = T,
                                stringsAsFactors = F)
   
-  fitness_data$has_wgs <- fitness_data$Diverse.BC %in% mutations_data$Diverse.BC  
+  fitness_data$has_wgs <- fitness_data$Diverse.BC %in% mutations_data$Diverse.BC
   
   fitness_data %>%
     dplyr::left_join(dplyr::select(cluster_data, Full.BC, cluster),
@@ -118,7 +119,7 @@ main <- function(arguments) {
                     gens = arguments$gens) %>%
     as.data.frame() %>%
     dplyr::mutate(Full.BC = row.names(.)) %>%
-    tidyr::pivot_longer(cols = grep("_s$", names(fitness_matr), value = T),
+    tidyr::pivot_longer(cols = grep("_s$", names(.), value = T),
                         names_to = "bfa_env", values_to = "s") %>%
     dplyr::left_join(
       fitness_data[, c("Full.BC", "Subpool.Environment", fit_dat_cols)],
@@ -141,27 +142,23 @@ main <- function(arguments) {
     summarise_sources() ->
     source_summaries
   
-  bfa_prfx = strsplit(basename(arguments$fitness_file),"_")[[1]][1]
+  bfa_prfx <- strsplit(basename(arguments$fitness_file), "_adapteds")[[1]][1]
   
   source_summaries$source_summary %>%
-    readr::write_csv(path = file.path(arguments$outdir, 
-                                      "tables",
-                                      paste0("source_summaries_table_",
-                                             bfa_prfx,
-                                             ".csv")))
+    write_out(out_dir = file.path(arguments$outdir, "tables"),
+              base_name = basename(arguments$fitness_file),
+              str_to_append = "_source_summaries_table")
   
   source_summaries$plot_table %>%
-    readr::write_csv(path = file.path(arguments$outdir, 
-                                      "tables",
-                                      paste0("source_summaries_plot-data_",
-                                             bfa_prfx,
-                                             ".csv")))
+    write_out(out_dir = file.path(arguments$outdir, "tables"),
+              base_name = basename(arguments$fitness_file),
+              str_to_append = "_source_summaries_plot-data")
   
   source_summaries$plot %>%
-    ggsave(filename = file.path(arguments$outdir, 
+    ggsave(filename = file.path(arguments$outdir,
                                 "figures",
-                                paste0("source_summaries_plot_",
-                                       bfa_prfx,
+                                paste0(bfa_prfx,
+                                       "_source_summaries_plot",
                                        ".pdf")),
            width = 5,
            height = 4,
@@ -188,7 +185,8 @@ Options:
     -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
 
 Arguments:
-    fitness_file                  Input with cluster means (from cluster_lineages.R)
+    fitness_file                  Input from adapted calling routine
+    cluster_file                  Input with cluster IDs (from cluster_lineages.R)
     mutations_file                Input with mutation data (from combine_BCs_and_WGS.R)
 " -> doc
 
@@ -203,7 +201,7 @@ args <- list(
   exclude = "X48Hr"
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
 cat("\n************************\n")
 cat("* summarise_clusters.R *\n")
