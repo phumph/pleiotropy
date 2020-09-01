@@ -144,3 +144,15 @@ clean_dBFA:
 	#rm $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv
 	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv
 	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv
+
+
+.PHONY: clean_summaries
+
+clean_summaries:
+
+	rm $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv
+	rm $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv
+	rm $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf
+	rm $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv
+	rm $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv
+	rm $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf

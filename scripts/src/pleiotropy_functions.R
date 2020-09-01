@@ -302,6 +302,10 @@ normalize_envs <- function(df,
   
   names(df)[names(df) == source_col] <- "source"
   
+  if (all((grepl(remove_str_from_source,df$source) == FALSE))) {
+    remove_str_from_source <- paste0("_", dplyr::last(unlist(strsplit(df$source[1], "_"))))
+  }
+  
   df$source <- sapply(df$source, function(x) gsub(remove_str_from_source, "", x))
   df$bfa_env <- sapply(df$bfa_env, function(x) gsub(remove_str_from_bfa_env, "", x))
   
@@ -396,4 +400,28 @@ flag_adapted_at_home <- function(df, source_ref, s_cutoff = 0) {
   df_long_w_flags$adapted_at_home[df_long_w_flags$source %in% sources_with_no_homes$source] <- NA
   
   return(dplyr::select(df_long_w_flags, Full.BC, adapted_at_home) %>% unique())
+}
+
+
+write_out <- function(df,
+                      base_name = NULL,
+                      out_dir = NULL,
+                      str_to_append = NULL) {
+  
+  stopifnot(!is.null(out_dir) & !is.null(str_to_append))
+  
+  if (!dir.exists(out_dir)) {
+    dir.create(file.path(out_dir))
+  }
+  if (is.null(base_name)) {
+    base_name <- "output_"
+  } else {
+    base_name %>%
+      strsplit("_adapted") %>%
+      unlist() %>%
+      dplyr::first() ->
+      base_name
+  }
+  outpath <- file.path(out_dir, paste0(base_name, str_to_append, ".csv"))
+  readr::write_csv(df, path = outpath, col_names = T)
 }

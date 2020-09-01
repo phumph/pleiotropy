@@ -245,31 +245,6 @@ average_clusters <- function(clusters, mean_matr, var_matr, covm) {
 }
 
 
-write_out <- function(df,
-                      base_name = NULL,
-                      out_dir = NULL,
-                      str_to_append = NULL) {
-
-  stopifnot(!is.null(out_dir) & !is.null(str_to_append))
-
-  if (!dir.exists(out_dir)) {
-    dir.create(file.path(out_dir))
-  }
-
-  if (is.null(base_name)) {
-    base_name <- "output_"
-  } else {
-    base_name %>%
-      strsplit("_adapted") %>%
-      unlist() %>%
-      dplyr::first() ->
-      base_name
-  }
-
-  outpath <- file.path(out_dir, paste0(base_name, str_to_append, ".csv"))
-  readr::write_csv(df, path = outpath, col_names = T)
-}
-
 # ------------------------- #
 # main def                  #
 # ------------------------- #
