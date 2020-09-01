@@ -1,12 +1,5 @@
 #! /usr/bin/env Rscript
-
-# tabulate_by_env.R
-
-# This script takes input fitness data (post-clustering)
-# as well as mutation data linked with barcodes and
-# generates counts of lineages across environments.
-#
-# Outputs comprise two Supplemental Tables.
+# summarise_sources.R
 
 # ------ #
 # header #
@@ -23,9 +16,8 @@ source(file.path("scripts/src/pleiotropy_functions.R"))
 # function defs #
 # ------------- #
 
-
 summarise_sources <- function(df) {
-  
+
   df %>%
     dplyr::select(-bfa_env, -s) %>%
     unique() %>%
@@ -40,7 +32,7 @@ summarise_sources <- function(df) {
                      n_clusters = length(unique(cluster)))  %>%
     dplyr::arrange(desc(n_bcs_adapted)) ->
     df2
-  
+
   # fit summary plot
   df2 %>%
     dplyr::select(-n_wgs, -p_bcs_adapted) %>%
@@ -48,16 +40,16 @@ summarise_sources <- function(df) {
                         names_to = "bc_set",
                         values_to = "bc_count") ->
     df3
-  
+
   # re-order factors:
   df3 %>%
     dplyr::filter(bc_set == "n_bcs_adapted") %>%
     dplyr::arrange(desc(bc_count)) %>%
     dplyr::select(source) ->
     source_order
-  
+
   df3$source <- factor(df3$source, levels = (source_order$source))
-  
+
   sources_plot <-
     ggplot() +
     geom_bar(data = df3, aes(x = source, y = bc_count, fill = bc_set),
@@ -75,7 +67,7 @@ summarise_sources <- function(df) {
     annotate(geom = "text",
              label = paste0(df2$p_adapted_w_wgs),
              x = paste0(df2$source), y = -26, size = 2)
-  
+
   return(list(source_summary = df2,
               plot = sources_plot,
               plot_table = df3))
@@ -83,35 +75,35 @@ summarise_sources <- function(df) {
 
 
 main <- function(arguments) {
-  
+
   fitness_data <- read.table(arguments$fitness_file,
                              sep = ",",
                              header = T,
                              stringsAsFactors = F)
-  
+
   cluster_data <- read.table(arguments$cluster_file,
                              sep = ",",
                              header = T,
                              stringsAsFactors = F)
-  
+
   mutations_data <- read.table(arguments$mutations_file,
                                sep = ",",
                                header = T,
                                stringsAsFactors = F)
-  
+
   fitness_data$has_wgs <- fitness_data$Diverse.BC %in% mutations_data$Diverse.BC
-  
+
   fitness_data %>%
     dplyr::filter(!Subpool.Environment %in% c("none", "not_read")) %>%
     dplyr::left_join(dplyr::select(cluster_data, Full.BC, cluster),
                      by = "Full.BC") ->
     fitness_data
-  
+
   fit_dat_cols <- c("is_adapted", "neutral_set", "has_wgs", "cluster")
   if (grepl("^hBFA", basename(arguments$fitness_file))) {
     fit_dat_cols <- c(fit_dat_cols, "autodip")
   }
-  
+
   fitness_data %>%
     prep_fit_matrix(means_only = TRUE,
                     excludes = arguments$exclude,
@@ -125,11 +117,11 @@ main <- function(arguments) {
       fitness_data[, c("Full.BC", "Subpool.Environment", fit_dat_cols)],
       by = "Full.BC") ->
     fitness_matr_long
-  
+
   fitness_matr_long %>%
     normalize_envs() ->
     fitness_matr_norm
-  
+
   # exclude autodiploitds if hBFA
   if (grepl("hBFA", basename(arguments$fitness_file))) {
     fitness_matr_norm %>%
@@ -137,31 +129,31 @@ main <- function(arguments) {
       dplyr::select(-autodip) ->
       fitness_matr_norm
   }
-  
+
   fitness_matr_norm %>%
     summarise_sources() ->
     source_summaries
-  
+
   bfa_prfx <- strsplit(basename(arguments$fitness_file), "_adapteds")[[1]][1]
-  
+
   source_summaries$source_summary %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
               base_name = basename(arguments$fitness_file),
               str_to_append = "_source_summaries_table")
-  
+
   source_summaries$plot_table %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
               base_name = basename(arguments$fitness_file),
               str_to_append = "_source_summaries_plot-data")
-  
+
   if (grepl("dBFA2", bfa_prfx)) {
-    plot_width = 7
-    plot_height = 5
+    plot_width <- 7
+    plot_height <- 5
   } else {
-    plot_width = 5
-    plot_height = 4
+    plot_width <- 5
+    plot_height <- 4
   }
-  
+
   source_summaries$plot %>%
     ggsave(filename = file.path(arguments$outdir,
                                 "figures",
@@ -172,7 +164,7 @@ main <- function(arguments) {
            height = plot_height,
            device = "pdf",
            units = "in")
-  
+
 }
 
 # ==== #
@@ -209,11 +201,11 @@ args <- list(
   exclude = "X48Hr"
 )
 
-debug_status <- FALSE
+debug_status <- TRUE
 
-cat("\n**********************\n")
-cat("* summarise_csources.R *\n")
-cat("************************\n\n")
+cat("\n*********************\n")
+cat("* summarise_sources.R *\n")
+cat("***********************\n\n")
 
 arguments <- run_args_parse(args, debug_status)
 main(arguments)

@@ -1,12 +1,4 @@
-# TODO.md
-
-## Before next update
-
-- [x] Finish and run `call_adapteds.R`
-- [x] Compile BCs via `combine_BCs_and_WGS.R`
-- [x] Generate `t-SNE` cluster process
-- [ ] Generate summary tables and plots for lineage count by cluster
-- [ ] Map genotype to phenotype with mutual information
+# NOTES.md
 
 ### Notes
 

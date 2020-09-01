@@ -11,6 +11,7 @@ hBFA_NEUTRAL_ENV=YPD_alpha
 dBFA_BASENAME=dBFA2_cutoff-5
 dBFA_NEUTRAL_ENV=Ancestor_YPD_2N
 OUTDIR=data/fitness_data/fitness_calls
+COMBINED=data/combined
 OUTPUT=output
 TABLEDIR=$(OUTPUT)/tables
 FIGDIR=$(OUTPUT)/figures
@@ -26,7 +27,29 @@ data/mutation_data/mutations_by_bc.csv:
 
 .PHONY: summaries
 
-summaries: $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf
+summaries: $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf
+
+$(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv:
+	Rscript scripts/compile_data_by_barcode.R \
+		--use_iva \
+		--exclude=X48Hr \
+		--gens=8 \
+		--outdir=$(OUTPUT) \
+		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv \
+		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv \
+		data/mutation_data/mutations_by_bc.csv
+
+
+$(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv:
+	Rscript scripts/compile_data_by_barcode.R \
+		--use_iva \
+		--exclude=X48Hr \
+		--gens=8 \
+		--outdir=$(OUTPUT) \
+		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv \
+		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
+		data/mutation_data/mutations_by_bc.csv
+
 
 $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf:
 	Rscript scripts/summarise_sources.R \
@@ -48,8 +71,28 @@ $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_B
 		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
 		data/mutation_data/mutations_by_bc.csv
 
+$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_cluster_summaries_plot.pdf:
+	Rscript scripts/summarise_clusters.R \
+		--use_iva \
+		--exclude=X48Hr \
+		--gens=8 \
+		--outdir=$(OUTPUT) \
+		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv \
+		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv \
+		data/mutation_data/mutations_by_bc.csv
 
-.PHONY: hBFA
+$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_table.csv $(FIGDIR)/$(dBFA_BASENAME)_cluster_summaries_plot.pdf:
+	Rscript scripts/summarise_clusters.R \
+		--use_iva \
+		--exclude=X48Hr \
+		--gens=8 \
+		--outdir=$(OUTPUT) \
+		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv \
+		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
+		data/mutation_data/mutations_by_bc.csv
+
+
+PHONY: hBFA
 
 hBFA: $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
 
