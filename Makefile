@@ -34,7 +34,7 @@ $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv:
 		--use_iva \
 		--exclude=X48Hr \
 		--gens=8 \
-		--outdir=$(OUTPUT) \
+		--outdir=$(COMBINED) \
 		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv \
 		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv \
 		data/mutation_data/mutations_by_bc.csv
@@ -45,7 +45,7 @@ $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv:
 		--use_iva \
 		--exclude=X48Hr \
 		--gens=8 \
-		--outdir=$(OUTPUT) \
+		--outdir=$(COMBINED) \
 		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv \
 		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
 		data/mutation_data/mutations_by_bc.csv

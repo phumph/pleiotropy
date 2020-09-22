@@ -1,6 +1,8 @@
 scripts/_obs/
 plots/_obs/
 data/_obs/
+.Rhistory
 .Rprofile
 .Rproj.user
 packrat/lib*/
+data/mutations/
