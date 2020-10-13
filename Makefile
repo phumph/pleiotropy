@@ -27,7 +27,15 @@ data/mutation_data/mutations_by_bc.csv:
 
 .PHONY: summaries
 
-summaries: $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf
+summary_deps := $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv
+summary_deps += $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv
+summary_deps += $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv
+summary_deps += $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv
+summary_deps += $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf
+summary_deps += $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv
+summary_deps += $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv
+summary_deps += $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf
+summaries: $(summary_deps)
 
 $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv:
 	Rscript scripts/compile_data_by_barcode.R \

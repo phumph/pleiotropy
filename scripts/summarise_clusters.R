@@ -1,6 +1,6 @@
 #! /usr/bin/env Rscript
 
-# tabulate_by_env.R
+# summarise_cluster.R
 
 # This script takes input fitness data (post-clustering)
 # as well as mutation data linked with barcodes and
@@ -19,140 +19,133 @@ suppressWarnings(suppressMessages(library(ggplot2)))
 
 source(file.path("scripts/src/pleiotropy_functions.R"))
 
+
 # ------------- #
 # function defs #
 # ------------- #
 
+weighted_mean <- function(x, se, stderr = FALSE) {
+  if (length(x) == 1) {
+    return(c("wmu_x" = x, "wse" = se))  
+  }
+  w = 1 / se^2
+  wmu_x = sum(x*w) / sum(w)
+  n = length(x)
+  n_eff = sum(w)^2 / sum(w^2)
+  wvar = (sum(w * (x - wmu_x)^2) / sum(w)) * (n_eff / (n_eff - 1))
+  wse = sqrt(wvar)
+  if (stderr == TRUE) {
+    return(c("wmu_x" = wmu_x, "wse" = wse / sqrt(n_eff)))
+  }
+  return(c("wmu_x" = wmu_x, "wse" = wse))
+}
 
-summarise_sources <- function(df) {
 
+summarise_clusters <- function(df) {
+
+  # calculate weighted mean and var of each cluster
   df %>%
-    dplyr::select(-bfa_env, -s) %>%
-    unique() %>%
-    dplyr::group_by(source) %>%
-    dplyr::summarise(n_bcs = length(unique(Full.BC)),
-                     n_bcs_adapted = sum(is_adapted),
-                     p_bcs_adapted = round(n_bcs_adapted / n_bcs, 2),
-                     n_wgs = sum(has_wgs),
-                     p_wgs = round(n_wgs / n_bcs, 2),
-                     n_bcs_adapted_wgs = sum(is_adapted == TRUE & has_wgs == TRUE),
-                     p_adapted_w_wgs = round(n_bcs_adapted_wgs / n_bcs_adapted, 2),
-                     n_clusters = length(unique(cluster)))  %>%
-    dplyr::arrange(desc(n_bcs_adapted)) ->
-    df2
-
-  # fit summary plot
-  df2 %>%
-    dplyr::select(-n_wgs, -p_bcs_adapted) %>%
-    tidyr::pivot_longer(cols = c("n_bcs", "n_bcs_adapted", "n_bcs_adapted_wgs"),
-                        names_to = "bc_set",
-                        values_to = "bc_count") ->
-    df3
-
-  # re-order factors:
-  df3 %>%
-    dplyr::filter(bc_set == "n_bcs_adapted") %>%
-    dplyr::arrange(desc(bc_count)) %>%
-    dplyr::select(source) ->
-    source_order
-
-  df3$source <- factor(df3$source, levels = (source_order$source))
-
-  sources_plot <-
-    ggplot() +
-    geom_bar(data = df3, aes(x = source, y = bc_count, fill = bc_set),
-             stat = "identity",
-             position = "dodge", alpha = 0.5) +
-    theme_bw() +
-    scale_fill_manual(values = c("gray40", "dodgerblue", "darkorange2"),
-                      name = "bc_set") +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    ylab("num. BCs") +
-    xlab("source env") +
-    annotate(geom = "text",
-             label = paste0(df2$p_bcs_adapted),
-             x = paste0(df2$source), y = -12, size = 2) +
-    annotate(geom = "text",
-             label = paste0(df2$p_adapted_w_wgs),
-             x = paste0(df2$source), y = -26, size = 2)
-
-  return(list(source_summary = df2,
-              plot = sources_plot,
-              plot_table = df3))
+    dplyr::filter(is_adapted == TRUE, !is.na(cluster)) ->
+    df_filt  
+  
+  # calculate num. BCs per cluster
+  df_filt %>%
+    dplyr::group_by(source, cluster) %>%
+    dplyr::summarise(n_bcs = length(unique(Full.BC))) ->
+    bcs_per_cluster
+  bcs_per_cluster$cluster <- as.character(bcs_per_cluster$cluster)
+  
+  # apply calculation to each level of source, cluster, bfa_env
+  df_split <- split(df_filt, list(df_filt$source, df_filt$cluster, df_filt$bfa_env))
+  lapply(df_split, function(x) weighted.mean(x = x[["s"]], se = x[["s_se"]])) %>%
+    do.call(rbind, .) -> df_filt_2
+  
+  # reconstitute results into data.frame
+  df_filt_2 <- df_filt_2[complete.cases(df_filt_2),]
+  strsplit(row.names(df_filt_2), "\\.") %>% 
+    do.call(rbind, .) %>% 
+    as.data.frame() ->
+    df_cols
+  names(df_cols) <- c("source", "cluster", "bfa_env")
+  df_res <- data.frame(df_cols, df_filt_2, stringsAsFactors = FALSE)
+  
+  # count up nominally pleiotropic effects
+  z_cutoff <- 1.96
+  df_res$z = df_res$wmu_x / df_res$wse
+  df_res$pleio <- 0
+  df_res$pleio[df_res$z > z_cutoff] <- 1
+  df_res$pleio[df_res$z < -z_cutoff] <- -1
+  
+  # calculate average fitness accross away environments
+  df_res$is_home <- paste0(df_res$source) == paste0(df_res$bfa_env)
+  
+  df_res %>%
+    dplyr::filter(is_home == FALSE) -> df_tmp
+  
+  df_tmp_split <- split(df_tmp, list(df_tmp$source, df_tmp$cluster))
+  lapply(df_tmp_split, function(x) weighted_mean(x = x[["wmu_x"]], se = x[["wse"]], stderr = TRUE)) %>%
+    do.call(rbind, .) -> df_tmp_res
+  
+  df_tmp_res <- df_tmp_res[complete.cases(df_tmp_res),]
+  strsplit(row.names(df_tmp_res), "\\.") %>% 
+    do.call(rbind, .) %>% 
+    as.data.frame() ->
+    df_cols
+  names(df_cols) <- c("source", "cluster")
+  df_tmp_res <- data.frame(df_cols, df_tmp_res, stringsAsFactors = FALSE)
+  df_tmp_res %>%
+    dplyr::rename(wmu_x_away = wmu_x, wse_away = wse) ->
+    df_fit_away_res
+  
+  # summarise cluster info per source
+  df_res %>%
+    dplyr::group_by(source, cluster) %>%
+    dplyr::summarise(n_pleio_pos = sum(pleio == 1),
+                     n_pleio_neg = sum(pleio == -1),
+                     n_pleio_none = sum(pleio == 0),
+                     n_pleio_any = sum(abs(pleio)),
+                     n_pleio_net = sum(pleio),
+                     n_bfa_envs = n()) ->
+    df_pleio
+  
+  df_res %>%
+    dplyr::filter(is_home == TRUE) %>%
+    dplyr::select(source, cluster, wmu_x, wse) %>%
+    dplyr::rename(wmu_x_home = wmu_x,
+                  wse_home = wse) ->
+    df_fit_home_res
+  
+  suppressWarnings(
+    df_pleio %>%
+      dplyr::left_join(df_fit_home_res, by = c("source", "cluster")) %>%
+      dplyr::left_join(df_fit_away_res, by = c("source", "cluster")) %>%
+      dplyr::left_join(bcs_per_cluster, by = c("source", "cluster")) ->
+      df_res_byclust
+  )
+  
+  stopifnot(all(df_pleio$n_pleio_pos + df_pleio$n_pleio_neg + df_pleio$n_pleio_none == df_pleio$n_bfa_envs))
+  
+  return(df_res_byclust)
 }
 
 
 main <- function(arguments) {
 
-  fitness_data <- read.table(arguments$fitness_file,
-                             sep = ",",
-                             header = T,
-                             stringsAsFactors = F)
+  input_data <- read.table(arguments$input_file,
+                           sep = ",",
+                           header = T,
+                           stringsAsFactors = F)
+  
+  input_data %>%
+    summarise_clusters() ->
+    cluster_summaries
 
-  cluster_data <- read.table(arguments$cluster_file,
-                             sep = ",",
-                             header = T,
-                             stringsAsFactors = F)
+  bfa_prfx <- strsplit(basename(arguments$input_file), "_")[[1]][1]
 
-  mutations_data <- read.table(arguments$mutations_file,
-                               sep = ",",
-                               header = T,
-                               stringsAsFactors = F)
-
-  fitness_data$has_wgs <- fitness_data$Diverse.BC %in% mutations_data$Diverse.BC
-
-  fitness_data %>%
-    dplyr::filter(!Subpool.Environment %in% c("none", "not_read")) %>%
-    dplyr::left_join(dplyr::select(cluster_data, Full.BC, cluster),
-                     by = "Full.BC") ->
-    fitness_data
-
-  fit_dat_cols <- c("is_adapted", "neutral_set", "has_wgs", "cluster")
-  if (grepl("^hBFA", basename(arguments$fitness_file))) {
-    fit_dat_cols <- c(fit_dat_cols, "autodip")
-  }
-
-  fitness_data %>%
-    prep_fit_matrix(means_only = TRUE,
-                    excludes = arguments$exclude,
-                    iva_s = arguments$use_iva,
-                    gens = arguments$gens) %>%
-    as.data.frame() %>%
-    dplyr::mutate(Full.BC = row.names(.)) %>%
-    tidyr::pivot_longer(cols = grep("_s$", names(.), value = T),
-                        names_to = "bfa_env", values_to = "s") %>%
-    dplyr::left_join(
-      fitness_data[, c("Full.BC", "Subpool.Environment", fit_dat_cols)],
-      by = "Full.BC") ->
-    fitness_matr_long
-
-  fitness_matr_long %>%
-    normalize_envs() ->
-    fitness_matr_norm
-
-  # exclude autodiploitds if hBFA
-  if (grepl("hBFA", basename(arguments$fitness_file))) {
-    fitness_matr_norm %>%
-      dplyr::filter(autodip == FALSE) %>%
-      dplyr::select(-autodip) ->
-      fitness_matr_norm
-  }
-
-  fitness_matr_norm %>%
-    summarise_sources() ->
-    source_summaries
-
-  bfa_prfx <- strsplit(basename(arguments$fitness_file), "_adapteds")[[1]][1]
-
-  source_summaries$source_summary %>%
+  cluster_summaries %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
-              base_name = basename(arguments$fitness_file),
-              str_to_append = "_source_summaries_table")
-
-  source_summaries$plot_table %>%
-    write_out(out_dir = file.path(arguments$outdir, "tables"),
-              base_name = basename(arguments$fitness_file),
-              str_to_append = "_source_summaries_plot-data")
+              base_name = basename(arguments$input_file),
+              str_to_append = "_cluster_summaries_table")
 
   if (grepl("dBFA2", bfa_prfx)) {
     plot_width <- 7
@@ -162,11 +155,11 @@ main <- function(arguments) {
     plot_height <- 4
   }
 
-  source_summaries$plot %>%
+  cluster_summaries$plot %>%
     ggsave(filename = file.path(arguments$outdir,
                                 "figures",
                                 paste0(bfa_prfx,
-                                       "_source_summaries_plot",
+                                       "_cluster_summaries_plot",
                                        ".pdf")),
            width = plot_width,
            height = plot_height,
@@ -183,7 +176,7 @@ main <- function(arguments) {
 
 Usage:
     summarise_clusters.R [--help]
-    summarise_clusters.R [options] <fitness_file> <cluster_file> <mutations_file>
+    summarise_clusters.R [options] <input_file>
 
 Options:
     -h --help                     Show this screen.
@@ -193,23 +186,19 @@ Options:
     -e --exclude=<env>...         Space-separated list of environments to exclude from neutral set calculations
 
 Arguments:
-    fitness_file                  Input from adapted calling routine
-    cluster_file                  Input with cluster IDs (from cluster_lineages.R)
-    mutations_file                Input with mutation data (from combine_BCs_and_WGS.R)
+    input_file                    Input data file (combined fitness, cluster, and mutations data)
 " -> doc
 
 # define default args for debug_status == TRUE
 args <- list(
   use_iva = TRUE,
-  fitness_file = "data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapteds.csv",
-  cluster_file = "data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapted_w_clusts.csv",
-  mutations_file = "data/mutation_data/mutations_by_bc.csv",
+  input_file = "data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv",
   outdir = "output",
   gens = "8",
   exclude = "X48Hr"
 )
 
-debug_status <- FALSE
+debug_status <- TRUE
 
 cat("\n**********************\n")
 cat("* summarise_csources.R *\n")
