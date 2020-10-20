@@ -16,6 +16,23 @@ run_args_parse <- function(arguments = NULL, debug_status = FALSE) {
 }
 
 
+weighted_mean <- function(x, se, stderr = FALSE) {
+  if (length(x) == 1) {
+    return(c("wmu_x" = x, "wse" = se))  
+  }
+  w = 1 / se^2
+  wmu_x = sum(x*w) / sum(w)
+  n = length(x)
+  n_eff = sum(w)^2 / sum(w^2)
+  wvar = (sum(w * (x - wmu_x)^2) / sum(w)) * (n_eff / (n_eff - 1))
+  wse = sqrt(wvar)
+  if (stderr == TRUE) {
+    return(c("wmu_x" = wmu_x, "wse" = wse / sqrt(n_eff)))
+  }
+  return(c("wmu_x" = wmu_x, "wse" = wse))
+}
+
+
 prep_fit_matrix <- function(dat,
                             is_neutral = FALSE,
                             is_autodip = FALSE,
@@ -314,42 +331,40 @@ normalize_envs <- function(df,
 
 
 flag_home <- function(df) {
-  
   df$home <- df$bfa_env == df$source
-  
   return(df)
 }
 
 
-flag_pleiotropy <- function(df, z_cut = 1.96,
-                            source_col = "source",
-                            cluster_col = "cluster",
-                            home_col = "home") {
-  
-  df$fitness_diff <- ((abs(df$s / df$s_se)) > 1.96)
-  df$pleio_pos <- df$fitness_diff == TRUE & df$s > 0
-  df$pleio_neg <- df$fitness_diff == TRUE & df$s < 0
-  
-  suppressWarnings(
-    df %>%
-      dplyr::filter(!!sym(home_col) == FALSE) %>%
-      dplyr::group_by(!!sym(source_col),
-                      !!sym(cluster_col)) %>%
-      dplyr::summarise(s_mu_away = mean(s),
-                       n_bfa_envs = length(unique(bfa_env)),
-                       n_pleio_pos = sum(pleio_pos),
-                       n_pleio_neg = sum(pleio_neg),
-                       n_pleio_tot = sum(fitness_diff)) %>%
-      dplyr::left_join((df %>%
-                          dplyr::filter(!!sym(home_col) == TRUE) %>%
-                          dplyr::group_by(!!sym(source_col),
-                                          !!sym(cluster_col)) %>%
-                          dplyr::summarise(s_mu_home = mean(s))),
-                       by = c(source_col, cluster_col)) ->
-      df_summarized
-  )
-  return(df_summarized)
-}
+# flag_pleiotropy <- function(df, z_cut = 1.96,
+#                             source_col = "source",
+#                             cluster_col = "cluster",
+#                             home_col = "home") {
+#   
+#   df$fitness_diff <- ((abs(df$s / df$s_se)) > 1.96)
+#   df$pleio_pos <- df$fitness_diff == TRUE & df$s > 0
+#   df$pleio_neg <- df$fitness_diff == TRUE & df$s < 0
+#   
+#   suppressWarnings(
+#     df %>%
+#       dplyr::filter(!!sym(home_col) == FALSE) %>%
+#       dplyr::group_by(!!sym(source_col),
+#                       !!sym(cluster_col)) %>%
+#       dplyr::summarise(s_mu_away = mean(s),
+#                        n_bfa_envs = length(unique(bfa_env)),
+#                        n_pleio_pos = sum(pleio_pos),
+#                        n_pleio_neg = sum(pleio_neg),
+#                        n_pleio_tot = sum(fitness_diff)) %>%
+#       dplyr::left_join((df %>%
+#                           dplyr::filter(!!sym(home_col) == TRUE) %>%
+#                           dplyr::group_by(!!sym(source_col),
+#                                           !!sym(cluster_col)) %>%
+#                           dplyr::summarise(s_mu_home = mean(s))),
+#                        by = c(source_col, cluster_col)) ->
+#       df_summarized
+#   )
+#   return(df_summarized)
+# }
 
 
 flag_adapted_at_home <- function(df, source_ref, s_cutoff = 0) {
