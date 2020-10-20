@@ -5,4 +5,4 @@ data/_obs/
 .Rprofile
 .Rproj.user
 packrat/lib*/
-data/mutations/
+data/mutations/*
