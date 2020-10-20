@@ -1,3 +1,6 @@
+.DS_Store
+data/.DS_Store
+output/.DS_Store
 scripts/_obs/
 plots/_obs/
 data/_obs/
