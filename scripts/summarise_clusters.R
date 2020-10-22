@@ -6,12 +6,11 @@
 # as well as mutation data
 # and generates cluster-level statistics 
 # about fitness variation.
-#
+
 # Outputs 
 # 1. bfa-level data for spaghetti plots
 # 2. cluster-level data summarised for plotting
 # 3. cluster-and-mutation links for assessing mutual information
-
 
 # ------ #
 # header #
@@ -155,7 +154,8 @@ parse_muts_for_output <- function(mut_df, fit_df, assay) {
     mut_w_meta_df
   
   mut_w_meta_df %>%
-    dplyr::filter(!is.na(source), !is.na(cluster)) ->
+    dplyr::filter(!is.na(source), !is.na(cluster)) %>%
+    dplyr::mutate(assay = assay) ->
     mut_w_meta_filt_df
   
   return(mut_w_meta_filt_df)
@@ -169,13 +169,25 @@ main <- function(arguments) {
                            header = TRUE,
                            stringsAsFactors = FALSE)
   
-  
+  mutation_data <- read.table(arguments$mutations_file,
+                              sep = ",",
+                              header = TRUE,
+                              stringsAsFactors = FALSE)
   
   bfa_prfx <- strsplit(basename(arguments$input_file), "_")[[1]][1]
+  
+  strsplit(basename(arguments$input_file), "_")[[1]][1:2] %>% 
+    paste0(collapse = "_") ->
+    bfa_basename
   
   mutation_data %>%
     parse_muts_for_output(fit_df = input_data, assay = bfa_prfx) ->
     mutations_parsed
+  
+  mutations_parsed %>%
+    write_out(out_dir = file.path("data", "mutation_data"),
+              base_name = bfa_prfx,
+              str_to_append = "_mutations_by_cluster")
   
   input_data %>%
     dplyr::filter(!grepl(paste0(arguments$exclude, collapse = "|"), source),
@@ -186,10 +198,15 @@ main <- function(arguments) {
     summarise_clusters() ->
     cluster_summaries
   
+  cluster_summaries[[1]] %>%
+    write_out(out_dir = file.path(arguments$outdir, "tables"),
+              base_name = bfa_basename,
+              str_to_append = "_cluster_summaries_table")
+  
   cluster_summaries[[2]] %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
-              base_name = basename(arguments$input_file),
-              str_to_append = "_cluster_summaries_table")
+              base_name = bfa_basename,
+              str_to_append = "_cluster_summaries_plot-data")
 }
 
 # ==== #
@@ -200,7 +217,7 @@ main <- function(arguments) {
 
 Usage:
     summarise_clusters.R [--help]
-    summarise_clusters.R [options] <combined_file> <mutations_file>
+    summarise_clusters.R [options] <input_file> <mutations_file>
 
 Options:
     -h --help                     Show this screen.
@@ -220,7 +237,7 @@ args <- list(
   exclude = "48Hr"
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
 cat("\n**********************\n")
 cat("* summarise_clusters.R *\n")

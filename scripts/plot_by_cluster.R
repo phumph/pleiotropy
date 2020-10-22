@@ -1,5 +1,28 @@
-# plot spaghetti by cluster and source
+#! /usr/bin/env Rscript
 
+# plot_by_cluster.R
+
+# This script takes input from summarise_clusters.R
+# and plots fitness traces and pleiotropy patterns
+# accross environments
+
+# Outputs 
+# 1. individual plots per cluster per source environment
+# 2. summary plot of pleiotropic effects per source environment
+
+# ------ #
+# header #
+# ------ #
+
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(tidyr)))
+suppressWarnings(suppressMessages(library(docopt)))
+
+source(file.path("scripts/src/pleiotropy_functions.R"))
+
+# ------------- #
+# function defs #
+# ------------- #
 
 rescale_fitness <- function(df, bfa_envs, scale_factor, fit_col = "s") {
   df[[fit_col]][df$bfa_env %in% bfa_envs] <- df[[fit_col]][df$bfa_env %in% bfa_envs] / scale_factor
@@ -76,3 +99,40 @@ plot_cluster_by_source <- function(df, source = "GlyEtOH", resamples = 100) {
   
 }
 
+
+# ==== #
+# main #
+# ==== #
+
+"plot_by_cluster.R
+
+Usage:
+    plot_by_cluster.R [--help]
+    plot_by_cluster.R [options] <fitness_file> <pleiotropy_file>
+
+Options:
+    -h --help                     Show this screen.
+    -o --outdir=<outdir>          Output directory [default: ./]
+Arguments:
+    fitness_file                  fitness-by-cluster file (output 1 from summarise_clusters.R)
+    pleiotropy_file               pleiotropy summary file (output 2 from summarise_clusters.R)
+" -> doc
+
+# define default args for debug_status == TRUE
+args <- list(
+  use_iva = TRUE,
+  fitness_file = "data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv",
+  pleiotropy_file = "data/mutation_data/mutations_by_bc.csv",
+  outdir = "output/figures/clusters"
+)
+
+debug_status <- FALSE
+
+cat("\n*******************\n")
+cat("* plot_by_cluster.R *\n")
+cat("*********************\n\n")
+
+arguments <- run_args_parse(args, debug_status)
+main(arguments)
+
+cat("**Script completed successfully!**\n\n")
