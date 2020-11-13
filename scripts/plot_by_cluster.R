@@ -14,17 +14,6 @@
 # header #
 # ------ #
 
-theme_plt <- function(base_size = 10, base_family = "") {
-  theme_minimal() %+replace%
-    theme(axis.ticks = element_line(colour = "black", size = 0.2),
-          panel.border = element_rect(fill = NA),
-          panel.grid.major = element_line(colour = "gray80", size = 0.25, linetype = "dashed"),
-          panel.grid.minor = element_blank(),
-          axis.text = element_text(size = 8,
-                                   family = "sans",
-                                   color = "gray15"))
-}
-
 suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(docopt)))
@@ -33,6 +22,7 @@ suppressWarnings(suppressMessages(library(ggpubr)))
 suppressWarnings(suppressMessages(library(ggrepel)))
 
 source(file.path("scripts/src/pleiotropy_functions.R"))
+source(file.path("scripts/src/plt_themes.R"))
 
 # ------------- #
 # function defs #
@@ -66,18 +56,27 @@ generate_resamples <- function(mu_vec, se_vec, bfa_envs, source, cluster, resamp
 }
 
 
-plot_means_by_source <- function(df) {
+plot_means_by_source <- function(df, hBFA = FALSE) {
   
   source_order <- c("YPD", "SC",
                     "21C", "37C",
-                    "02M_NaCl", "GlyEtOH",
                     "pH3_8", "pH7_3",
+                    "GlyEtOH","02M_NaCl",
                     "FLC4", "CLM")
   
   df$source <- factor(df$source, levels = source_order)
   
-  df %>%
-    dplyr::filter(!source %in% c("FLC4", "CLM")) %>%
+  if (hBFA == FALSE) {
+    df %>%
+      dplyr::filter(!source %in% c("FLC4", "CLM")) ->
+      df_for_plot
+  } else {
+    df %>%
+      dplyr::filter(!source %in% c("CLM")) ->
+      df_for_plot
+  }
+  
+  df_for_plot %>%
     ggplot(aes(x = wmu_x_home, y = wmu_x_away)) +
     facet_wrap(~ source, ncol = 2) +
     geom_hline(yintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
@@ -86,11 +85,11 @@ plot_means_by_source <- function(df) {
                       ymax = wmu_x_away + wse_away), col = "gray15", width = 0) +
     geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
                        xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
-    geom_point(size = 2, col = "gray15") +
-    coord_cartesian(xlim = c(0, 0.1),
-                    ylim = c(-0.06, 0.06)) +
-    scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
-    scale_x_continuous(breaks = seq(0, 0.1, 0.02)) +
+    geom_point(size = 2, fill = "gray15", col = "white", pch = 21) +
+    # coord_cartesian(xlim = c(0, 0.1),
+    #                 ylim = c(-0.06, 0.06)) +
+    # scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
+    # scale_x_continuous(breaks = seq(0, 0.1, 0.02)) +
     theme_plt() +
     #xlab("home fitness") +
     xlab("") +
@@ -101,33 +100,37 @@ plot_means_by_source <- function(df) {
                      color = "gray40") ->
     mu_plot_no_drug
   
-  df %>%
-    dplyr::filter(source %in% c("FLC4", "CLM")) %>%
-    ggplot(aes(x = wmu_x_home, y = wmu_x_away)) +
-    facet_wrap(~ source, ncol = 2) +
-    geom_hline(yintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
-    geom_vline(xintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
-    geom_errorbar(aes(ymin = wmu_x_away - wse_away,
-                      ymax = wmu_x_away + wse_away), col = "gray15", width = 0) +
-    geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
-                       xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
-    geom_point(size = 2, col = "gray15") +
-    coord_cartesian(xlim = c(0, 0.8),
-                    ylim = c(-0.06, 0.06)) +
-    scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
-    scale_x_continuous(breaks = seq(0, 0.8, 0.2)) +
-    theme_plt() +
-    xlab("home fitness") +
-    ylab("") +
-    geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
-                     fill = NA,
-                     size = 3,
-                     color = "gray40") ->
-    mu_plot_drug
-  
-  mu_plot <- ggpubr::ggarrange(plotlist = list(mu_plot_no_drug, mu_plot_drug),
-                               nrow = 2, align = 'v',
-                               heights = c(1, 0.31))
+  if (hBFA == TRUE) {
+    mu_plot <- mu_plot_no_drug + xlab("home fitness")
+  } else {
+    df %>%
+      dplyr::filter(source %in% c("FLC4", "CLM")) %>%
+      ggplot(aes(x = wmu_x_home, y = wmu_x_away)) +
+      facet_wrap(~ source, ncol = 2) +
+      geom_hline(yintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+      geom_vline(xintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+      geom_errorbar(aes(ymin = wmu_x_away - wse_away,
+                        ymax = wmu_x_away + wse_away), col = "gray15", width = 0) +
+      geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
+                         xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
+      geom_point(size = 2, col = "gray15") +
+      coord_cartesian(xlim = c(0, 0.8),
+                      ylim = c(-0.06, 0.06)) +
+      scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
+      scale_x_continuous(breaks = seq(0, 0.8, 0.2)) +
+      theme_plt() +
+      xlab("home fitness") +
+      ylab("") +
+      geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
+                       fill = NA,
+                       size = 3,
+                       color = "gray40") ->
+      mu_plot_drug
+    
+    mu_plot <- ggpubr::ggarrange(plotlist = list(mu_plot_no_drug, mu_plot_drug),
+                                 nrow = 2, align = 'v',
+                                 heights = c(1, 0.31))
+  }
   return(mu_plot)
 }
 
@@ -201,16 +204,18 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
   
   p_df_pleio_long %>%
     dplyr::filter(pleio_type == "n_pleio_net") %>%
-    dplyr::arrange(source, pleio_score) %>%
+    dplyr::arrange(desc(source), pleio_score) %>%
     dplyr::select(source, source_cluster) ->
     clusters_for_order
   
   p_df_pleio_long$source_cluster <- factor(p_df_pleio_long$source_cluster,
                                            levels = clusters_for_order$source_cluster)
   
+  max_len <- length(clusters_for_order$source) + 1
   hline_mids <- cumsum(table(clusters_for_order$source)) + 0.5
+  hlines <- c(max_len - hline_mids, "top" = max_len - 0.5)
   
-  fill_pal <- rev(pals::tol(n = length(unique(p_df_pleio_long$source))))
+  fill_pal <- pals::tol(n = length(unique(p_df_pleio_long$source)))
   #fill_pal <- rev(pals::kelly(n = length(unique(p_df_pleio_long$source))))
   
   p_df_pleio_long %>%
@@ -224,7 +229,7 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
     xlab("") +
     scale_x_discrete(labels = c('-','+')) +
     scale_fill_manual(values = fill_pal) +
-    geom_hline(yintercept = hline_mids, col = "black") ->
+    geom_hline(yintercept = hlines, col = "black") ->
     pleio_plot_a
   
   # p_df_pleio_long %>%
@@ -246,7 +251,7 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
   #   scale_x_continuous(limits = c(-11, 11), breaks = seq(-10, 10, 2)) +
   #   geom_hline(yintercept = hline_mids, col = "black") ->
   #   pleio_plot_b
-
+  
   p_df_pleio_long %>%
     dplyr::filter(pleio_type == "n_pleio_net") %>%
     ggplot(aes(y = source_cluster, x = pleio_score, fill = source)) +
@@ -268,7 +273,7 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
     ylab("") +
     xlab("net pleiotropy") +
     scale_x_continuous(limits = c(-11, 11), breaks = seq(-10, 10, 2)) +
-    geom_hline(yintercept = hline_mids, col = "black") ->
+    geom_hline(yintercept = hlines, col = "black") ->
     pleio_plot_b
   
   plots_b <- ggpubr::ggarrange(plotlist = list(pleio_plot_a, pleio_plot_b),
@@ -315,8 +320,8 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
     scale_color_gradientn(colors = pal,
                           name="",
                           limits = c(-10, 10), breaks = seq(-10, 10, 5)) +
-    scale_y_continuous(limits = c(-0.2, 0.2), breaks = seq(-0.2, 0.2, 0.04)) +
-    coord_cartesian(ylim = c(-0.125, 0.125)) ->
+    scale_y_continuous(limits = c(-0.2, 0.2), breaks = seq(-0.2, 0.2, 0.04)) ->
+    #coord_cartesian(ylim = c(-0.155, 0.155)) ->
     fit_plot
   
   return(list(
@@ -348,57 +353,104 @@ main <- function(arguments) {
                          header = TRUE,
                          stringsAsFactors = FALSE)
   
-  bfa_prfx <- strsplit(basename(arguments$fitness_file), "_")[[1]][1]
+  # bfa_prfx <- strsplit(basename(arguments$fitness_file), "_")[[1]][1]
   
   strsplit(basename(arguments$fitness_file), "_")[[1]][1:2] %>% 
     paste0(collapse = "_") ->
     bfa_basename
   
-  fig_out_base <- paste0(dirname(arguments$fitness_file),
-                         "/",
-                         bfa_basename,
-                         "_") %>% gsub("tables", "figures", .)
+  paste0(dirname(arguments$fitness_file),
+         "/",
+         bfa_basename,
+         "_") %>% gsub("tables", "figures", .) ->
+    fig_out_base
   
   # mean fitness biplots
   # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   
-  mu_plots_by_source <- plot_means_by_source(pleio_df)
-  mu_plots_by_source %>%
-    ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.pdf"),
-                    device = "pdf",
-                    width = 4, height = 10, units = "in")
+  if (grepl("hBFA", bfa_basename)) {
+    fit_df %>%
+      dplyr::filter(source %in% c("CLM", "FLC4", "GlyEtOH"),
+                    !is.na(z),
+                    z != 0) ->
+      fit_df
+    
+    fit_df$source <- factor(fit_df$source, levels = c("CLM", "FLC4", "GlyEtOH"))
+    
+    pleio_df %>%
+      dplyr::filter(source %in% c("CLM", "FLC4", "GlyEtOH")) ->
+      pleio_df
+    
+    pleio_df$source <- factor(pleio_df$source, levels = c("CLM", "FLC4", "GlyEtOH"))
+    
+    pleio_df %>%
+      plot_means_by_source(hBFA = TRUE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.pdf"),
+                      device = "pdf",
+                      width = 4, height = 2.25, units = "in")
+  } else {
+    pleio_df %>%
+      plot_means_by_source(hBFA = FALSE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.pdf"),
+                      device = "pdf",
+                      width = 4, height = 10, units = "in")
+  }
   
   # pleio plots by source
   # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   
-  pleio_df %>%
-    split(.$source) ->
-    pleio_list
+  pleio_plots <- plot_pleio(p_df = pleio_df,
+                            s_df = fit_df)
   
-  fit_df %>%
-    split(.$source) ->
-    fit_list
+  plot_filename_1 <- file.path(paste0(fig_out_base,
+                                      "clusts_plot.pdf"))
   
-  sources <- names(pleio_list)
-  stopifnot(all(sources %in% names(fit_list)))
-  pleio_plots <- vector("list", length = length(source_list))
-  for (i in seq_along(sources)) {
-    plot_filename <- file.path(arguments$outdir, 
-                               paste0(bfa_prfx, "_", 
-                                      sources[i],
-                                      "_clust_fig.pdf"))
-    pleio_plots[[i]] <- plot_pleio(p_df = pleio_list[[sources[i]]],
-                                   s_df = fit_list[[sources[i]]],
-                                   source = sources[i])
-    
-    pleio_plots[[i]][1] %>%
-      ggplot2::ggsave(filename = plot_filename, device = "pdf",
-                      width = 5
+  plot_filename_2 <- file.path(paste0(fig_out_base, 
+                                      "pleio_plot.pdf"))
+  
+  # set plot params
+  if (grepl("hBFA", bfa_basename)) {
+    pwidth_1 = 6
+    pheight_1 = 4
+    pwidth_2 = 4
+    pheight_2 = 5
+  } else {
+    pwidth_1 = 6
+    pheight_1 = 9
+    pwidth_2 = 4
+    pheight_2 = 9
+  }
+  
+  if (arguments$png == FALSE) {
+    pleio_plots[[1]] %>%
+      ggplot2::ggsave(filename = plot_filename_1,
+                      device = "pdf",
+                      width = pwidth_1,
+                      height = pheight_1
       )
     
+    pleio_plots[[2]] %>%
+      ggplot2::ggsave(filename = plot_filename_2,
+                      device = "pdf",
+                      width = pwidth_2,
+                      height = pheight_2
+      )
+  } else {
+    pleio_plots[[1]] %>%
+      ggplot2::ggsave(filename = plot_filename_1,
+                      device = "png", dpi = 300,
+                      width = pwidth_1,
+                      height = pheight_1
+      )
+    
+    pleio_plots[[2]] %>%
+      ggplot2::ggsave(filename = plot_filename_2,
+                      device = "png", dpi = 300,
+                      width = pwidth_2,
+                      height = pheight_2
+      )
   }
 }
-
 
 
 "plot_by_cluster.R
@@ -410,6 +462,7 @@ Usage:
 Options:
     -h --help                     Show this screen.
     -o --outdir=<outdir>          Output directory [default: ./]
+    -p --png                      Flag to determine output device as PNG [default: PDF]
 Arguments:
     fitness_file                  fitness-by-cluster file (output 1 from summarise_clusters.R)
     pleiotropy_file               pleiotropy summary file (output 2 from summarise_clusters.R)
@@ -417,15 +470,15 @@ Arguments:
 
 # define default args for debug_status == TRUE
 args <- list(
-  fitness_file = "output/tables/dBFA2_cutoff-5_cluster_summaries_plot-data.csv",
-  pleiotropy_file = "output/tables/dBFA2_cutoff-5_cluster_summaries_table.csv",
-  outdir = "output/figures/clusters",
-  png = TRUE
+  fitness_file = "output/tables/hBFA1_cutoff-5_cluster_summaries_plot-data.csv",
+  pleiotropy_file = "output/tables/hBFA1_cutoff-5_cluster_summaries_table.csv",
+  outdir = "output/figures",
+  png = FALSE
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
-cat("\n*******************\n")
+cat("\n*********************\n")
 cat("* plot_by_cluster.R *\n")
 cat("*********************\n\n")
 

@@ -22,9 +22,31 @@ FIGDIR=$(OUTPUT)/figures
 
 WGS: data/mutation_data/mutations_by_bc.csv
 
-
 data/mutation_data/mutations_by_bc.csv:
 	Rscript scripts/combine_BCs_and_WGS.R
+
+.PHONY: figs
+
+fig_deps := $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf
+fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf
+fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf
+fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf
+fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf
+fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf
+
+figs: $(fig_deps)
+
+$(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf:
+	Rscript scripts/plot_by_cluster.R \
+		--outdir=$(FIGDIR)\
+		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv \
+		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_table.csv
+
+$(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf:
+	Rscript scripts/plot_by_cluster.R \
+		--outdir=$(FIGDIR) \
+		$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv \
+		$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_table.csv
 
 
 .PHONY: summaries
@@ -49,9 +71,6 @@ summary_deps += $(MUTATIONS_DIR)/hBFA1_mutations_by_cluster.csv
 
 summary_deps += $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf
 summary_deps += $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf
-
-summary_deps += $(FIGDIR)/$(hBFA_BASENAME)_cluster_summaries_plots.pdf
-summary_deps += $(FIGDIR)/$(dBFA_BASENAME)_cluster_summaries_plots.pdf
 
 summaries: $(summary_deps)
 
@@ -83,9 +102,7 @@ $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_B
 		--exclude=X48Hr \
 		--gens=8 \
 		--outdir=$(OUTPUT) \
-		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv \
-		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv \
-		data/mutation_data/mutations_by_bc.csv
+		$(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv
 
 
 $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(dBFA_BASENAME)_source_summaries_plot.pdf:
@@ -94,9 +111,7 @@ $(TABLEDIR)/$(dBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_B
 		--exclude=X48Hr \
 		--gens=8 \
 		--outdir=$(OUTPUT) \
-		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv \
-		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
-		data/mutation_data/mutations_by_bc.csv
+		$(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv
 
 
 $(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_table.csv $(MUTATIONS_DIR)/hBFA1_mutations_by_cluster.csv:
@@ -114,14 +129,6 @@ $(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv $(TABLEDIR)/$(dBFA_
 		$(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv \
 		data/mutation_data/mutations_by_bc.csv
 
-# $(FIGDIR)/$(hBFA_BASENAME)_cluster_summaries_plot.pdf:
-# 	Rscript scripts/plot_by_cluster.R \
-# 		$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv
-#
-# $(FIGDIR)/$(dBFA_BASENAME)_cluster_summaries_plot.pdf:
-# 	Rscript scripts/plot_by_cluster.R \
-# 		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv
-
 
 PHONY: hBFA
 
@@ -131,7 +138,7 @@ hBFA: $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted
 $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv:
 	Rscript scripts/call_adapteds.R \
 		--use_iva \
-	  --exclude=X48Hr \
+	  --exclude=CLM\|FLC4\|Stan\|48Hr \
 	  --gens=8 \
 	  --cutoff=0.05 \
 	  --base_name=$(hBFA_BASENAME) \
@@ -143,9 +150,9 @@ $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv:
 $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv:
 	Rscript scripts/filter_autodiploids.R \
 	  --use_iva \
-	  --exclude=X48Hr \
+	  --exclude=CLM\|FLC4\|Stan\|48Hr \
 	  --gens=8 \
-	  --cutoff=0 \
+	  --cutoff=0.01 \
 	  --base_name=$(hBFA_BASENAME) \
 	  --outdir=$(OUTDIR) \
 	  $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv \
@@ -155,7 +162,7 @@ $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv:
 $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv:
 	Rscript scripts/cluster_lineages.R \
 		--use_iva \
-		--exclude=X48Hr \
+		--exclude=CLM\|FLC4\|Stan\|48Hr \
 		--gens=8 \
 		--outdir=$(OUTDIR) \
 		$(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
@@ -169,7 +176,7 @@ dBFA: $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv $(OUTDIR)/$(dBFA_BASENAME)_adapted
 $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv :
 	Rscript scripts/call_adapteds.R \
 		--use_iva \
-	  --exclude=CLM\|FLC4\|Stan \
+	  --exclude=CLM\|FLC4\|Stan\|48Hr \
 	  --gens=8 \
 	  --cutoff=0.05 \
 	  --base_name=$(dBFA_BASENAME) \
@@ -181,7 +188,7 @@ $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv :
 $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv:
 	Rscript scripts/cluster_lineages.R \
 		--use_iva \
-		--exclude=CLM\|FLC4\|Stan \
+		--exclude=CLM\|FLC4\|Stan\|48Hr \
 		--gens=8 \
 		--outdir=$(OUTDIR) \
 		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv
@@ -191,24 +198,24 @@ $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv $(OUTDIR)/$(dBFA_BASENAME)_adapt
 
 clean_all:
 
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
-	rm $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv
-	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv
-	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv
-	rm $(summary_deps)
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
+	rm -f $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv
+	rm -f $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv
+	rm -f $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv
+	rm -f $(summary_deps)
 
 
 .PHONY: clean_hBFA
 
 clean_hBFA:
 
-	#rm $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv
-	#rm $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv
-	rm $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapteds.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapteds_autodips.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv
+	rm -f $(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clust_means.csv
 
 
 .PHONY: clean_dBFA
@@ -216,8 +223,8 @@ clean_hBFA:
 clean_dBFA:
 
 	#rm $(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv
-	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv
-	rm $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv
+	rm -f $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv
+	rm -f $(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clust_means.csv
 
 
 .PHONY: clean_summaries

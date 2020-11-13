@@ -57,7 +57,9 @@ main <- function(arguments) {
                         names_to = "bfa_env", values_to = "s") %>%
     dplyr::left_join(
       fitness_data[, c("Full.BC", "Subpool.Environment", fit_dat_cols)],
-      by = "Full.BC") %>%
+      by = "Full.BC") -> fitness_matr
+  
+  fitness_matr %>%
     normalize_envs() ->
     fitness_matr_norm
   
@@ -122,8 +124,8 @@ Arguments:
 # define default args for debug_status == TRUE
 args <- list(
   use_iva = TRUE,
-  fitness_file = "data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapteds.csv",
-  cluster_file = "data/fitness_data/fitness_calls/dBFA2_cutoff-5_adapted_w_clusts.csv",
+  fitness_file = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv",
+  cluster_file = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapted_w_clusts.csv",
   mutations_file = "data/mutation_data/mutations_by_bc.csv",
   outdir = "data/compiled",
   gens = "8",
@@ -132,9 +134,9 @@ args <- list(
 
 debug_status <- FALSE
 
-cat("\n*********************\n")
-cat("* summarise_sources.R *\n")
-cat("***********************\n\n")
+cat("\n***************************\n")
+cat("* compile_data_by_barcode *\n")
+cat("***************************\n\n")
 
 arguments <- run_args_parse(args, debug_status)
 main(arguments)

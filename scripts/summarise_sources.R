@@ -88,14 +88,17 @@ main <- function(arguments) {
   
   bfa_prfx <- strsplit(basename(arguments$input_file), "_")[[1]][1]
   
+  # fx these outputs
   source_summaries$source_summary %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
               base_name = basename(arguments$input_file),
+              split_on = "_compiled",
               str_to_append = "_source_summaries_table")
   
   source_summaries$plot_table %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
               base_name = basename(arguments$input_file),
+              split_on = "_compiled",
               str_to_append = "_source_summaries_plot-data")
   
   if (grepl("dBFA2", bfa_prfx)) {
@@ -143,15 +146,15 @@ Arguments:
 # define default args for debug_status == TRUE
 args <- list(
   use_iva = TRUE,
-  input_file = "data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv",
+  input_file = "data/combined/hBFA1_cutoff-5_compiled_data_by_barcode.csv",
   outdir = "output",
   gens = "8",
   exclude = "X48Hr"
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
-cat("\n*********************\n")
+cat("\n***********************\n")
 cat("* summarise_sources.R *\n")
 cat("***********************\n\n")
 

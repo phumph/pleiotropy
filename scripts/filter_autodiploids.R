@@ -17,6 +17,7 @@ suppressWarnings(suppressMessages(library(docopt)))
 suppressWarnings(suppressMessages(library(knitr)))
 suppressWarnings(suppressMessages(library(kableExtra)))
 suppressWarnings(suppressMessages(library(ggplot2)))
+
 source(file.path("scripts/src/pleiotropy_functions.R"))
 
 # ------------- #
@@ -24,7 +25,7 @@ source(file.path("scripts/src/pleiotropy_functions.R"))
 # ------------- #
 
 # generate distance calculations
-distify_autodips <- function(autodips, all_others, cutoff) {
+distify_autodips <- function(autodips, all_others) {
   
   # calculate distance between each barcode and the set of autodip barcodes
   # sum the total Euclidean distance for each barcode
@@ -84,7 +85,8 @@ assign_autodip_status <- function(autodip_dists, cutoff) {
   # define sum SQRT_SSED dist cutoff value
   if (cutoff == "max") {
     d_cutoff <- ceiling(max(autodip_dists$SQRT_SSED[autodip_dists$autodip == 1]))
-  } else if (is.numeric(cutoff)) {
+  } else {
+    cutoff <- as.double(cutoff)
     d_cutoff <- ceiling(stats::quantile(autodip_dists$SQRT_SSED[autodip_dists$autodip == 1],
                                         probs = 1 - cutoff)) %>%
       as.numeric()
@@ -120,11 +122,11 @@ plot_autodip_status <- function(autodip_dists, cutoff, outdir, base_name) {
   
   # output table
   tab_dat %>%
-    kable(format = "html") %>%
-    kable_styling(bootstrap_options = c("striped", "condensed")) %>%
+    knitr::kable("pipe") %>%
+    kableExtra::kable_styling(bootstrap_options = c("striped", "condensed")) %>%
     writeLines(con = file.path(outdir,
                                base_name,
-                               "autodip_tally_by_env.html"))
+                               "autodip_tally_by_env.md"))
   
   # make plot
   autodip_dists %>%
@@ -188,7 +190,7 @@ main <- function(arguments) {
   
   dat <- read.table(arguments$infile,
                     header = TRUE,
-                    sep = ',',
+                    sep = ",",
                     stringsAsFactors = F)
   
   # filter input dataframe to prepare it for
@@ -273,7 +275,7 @@ main <- function(arguments) {
 
 Usage:
     filter_autodiploids.R [--help]
-    filter_autodiploids.R [options] <infile> <audodip_tag>
+    filter_autodiploids.R [options] <infile> <autodip_tag>
 
 Options:
     -h --help                     Show this screen.
@@ -286,7 +288,7 @@ Options:
 
 Arguments:
     infile                        Input file containing fitness calls for BFA run.
-    audodip_tag                   String denoting identifier for autodip lineages
+    autodip_tag                   String denoting identifier for autodip lineages
 " -> doc
 
 args = list(
@@ -295,12 +297,12 @@ args = list(
   outdir      = "data/fitness_data/fitness_calls",
   autodip_tag = "autodiploids",
   base_name   = "hBFA1_cutoff-5",
-  exclude     = "X48Hr",
-  cutoff      = 0,
+  exclude     = "CLM|FLC4|Stan|48Hr",
+  cutoff      = 0.05,
   gens        = 8
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
 cat("\n*************************\n")
 cat("* filter_autodiploids.R *\n")

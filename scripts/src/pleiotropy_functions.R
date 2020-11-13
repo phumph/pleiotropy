@@ -81,11 +81,18 @@ prep_fit_matrix <- function(dat,
   # grab relevant fitness columns from input
   df_mat <-
     dat %>%
-    dplyr::select(grep(paste0(fit_col,'$|',err_col,'$'), names(dat), value = T)) %>%
-    as.matrix()
+    dplyr::select(grep(paste0(fit_col,'$|',err_col,'$'), names(dat), value = T))
   
-  df_mat[is.infinite(df_mat)] <- NA
-  df_mat <- df_mat[complete.cases(df_mat), ]
+  df_mat <- sapply(df_mat, function(x) replace(x, is.infinite(x), NA), simplify = FALSE) %>%
+    data.frame()
+  
+  row.names(df_mat) <- row.names(dat)
+  
+  if (is.data.frame(df_mat) && dim(df_mat)[1] > 1) {
+    df_mat <- df_mat[complete.cases(df_mat), ]
+  } else {
+    stopifnot(sum(is.na(df_mat)) == 0)
+  }
   
   # split into means and sigmas:
   if (means_only == FALSE) {
@@ -236,7 +243,6 @@ flag_adapteds <- function(matr, testing_distn, cutoff) {
   # takes mean vector of all barcodes, neutral test distn,
   # and compares distance of each barcode to the neutral set.
   # for now, does not handle missing values but simply excludes them.
-  # I'll need to update the script to do this soon.
   
   # calculate distance of each barcode versus neutral set:
   D <- mahalanobis(matr,
@@ -244,8 +250,9 @@ flag_adapteds <- function(matr, testing_distn, cutoff) {
                    testing_distn$cov_matr)
   
   # for each: determine p-value within testing distribution
+  test_distn_len <- length(testing_distn$distances)
   p_vals <- sapply(D, function(x) {
-    sum(testing_distn$distances >= x) / length(testing_distn$distances)
+    sum(testing_distn$distances > x) / test_distn_len
   })
   
   is_adapted <- D > quantile(testing_distn$distances, probs = 1 - cutoff)
@@ -373,7 +380,7 @@ flag_adapted_at_home <- function(df, source_ref, s_cutoff = 0) {
   
   df_long <-
     df %>%
-    tidyr::pivot_longer(cols = env_cols, names_to = "bfa_env", values_to = "s")
+    tidyr::pivot_longer(cols = all_of(env_cols), names_to = "bfa_env", values_to = "s")
   
   df_long$bfa_env <-  sapply(df_long$bfa_env,
                              function(x) {
@@ -420,6 +427,7 @@ flag_adapted_at_home <- function(df, source_ref, s_cutoff = 0) {
 
 write_out <- function(df,
                       base_name = NULL,
+                      split_on = "_adapted",
                       out_dir = NULL,
                       str_to_append = NULL) {
   
@@ -432,7 +440,7 @@ write_out <- function(df,
     base_name <- "output_"
   } else {
     base_name %>%
-      strsplit("_adapted") %>%
+      strsplit(split_on) %>%
       unlist() %>%
       dplyr::first() ->
       base_name

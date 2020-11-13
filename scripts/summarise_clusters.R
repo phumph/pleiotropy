@@ -231,7 +231,7 @@ Arguments:
 # define default args for debug_status == TRUE
 args <- list(
   use_iva = TRUE,
-  input_file = "data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv",
+  input_file = "data/combined/hBFA1_cutoff-5_compiled_data_by_barcode.csv",
   mutations_file = "data/mutation_data/mutations_by_bc.csv",
   outdir = "output",
   exclude = "48Hr"
@@ -239,7 +239,7 @@ args <- list(
 
 debug_status <- FALSE
 
-cat("\n**********************\n")
+cat("\n************************\n")
 cat("* summarise_clusters.R *\n")
 cat("************************\n\n")
 

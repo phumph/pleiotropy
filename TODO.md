@@ -1,4 +1,10 @@
-# NOTES.md
+# TODO.md
+
+### 2020-OCT-31
+
+- [ ] Fix `kable` calls throughout to re-specify table format, using global.
+- [ ] Fix `cluster_lineages.R` error: non-conformable arrays, for hBFA
+
 
 ### Notes
 
@@ -11,8 +17,8 @@ Finishing `combine_BCs_and_WGS.R` script and I need to implement some logging in
 Will implement the logging functions and write this a command-line executed script. One of the outputs will be a rendered markdown table with the results. In order for this to happen, I need to do the following:
 
 - [x] Implement command-line arguments via `docopt`
-- [ ] Write `src` file for the table template
-- [ ] Initiate `.md` step-by-step for the analysis as `phumph.github.io/plt` page.
+- [x] Write `src` file for the table template
+- [x] Initiate `.md` step-by-step for the analysis as `phumph.github.io/plt` page.
 
 Thinking about the structure of this workflow.
 

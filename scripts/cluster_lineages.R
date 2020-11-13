@@ -16,7 +16,7 @@ suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(library(docopt)))
 
-source(file.path('scripts/src/pleiotropy_functions.R'))
+source(file.path("scripts/src/pleiotropy_functions.R"))
 
 # ------------------------- #
 # function definitions      #
@@ -115,6 +115,14 @@ calc_clust_dist <- function(...) {
 }
 
 
+numerize <- function(x) {
+  if (nrow(x) == 1){
+    return(as.vector(x))
+  } else {
+    return(as.matrix(x))
+  }
+}
+
 reduce_clusters_by_dist <- function(clust_vec = NULL,
                                     mean_matr = NULL,
                                     var_matr = NULL,
@@ -129,7 +137,7 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
   dist_cutoff <- qchisq(p = p_cutoff, df = df)
 
   if (is.null(clust_vec)) {
-    clust_vec <- seq_len(mean_matr)
+    clust_vec <- seq_len(dim(mean_matr)[1])
   } else {
     stopifnot(is.vector(clust_vec) &
                 length(clust_vec) == nrow(mean_matr) &
@@ -162,8 +170,8 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
         i <- i + 1
       }
       c_i <- clust_ids[i]
-      x_i <- mean_matr[clust_vec == c_i, ]
-      x_i_var <- var_matr[clust_vec == c_i, ]
+      x_i <- as.matrix(mean_matr[clust_vec == c_i, ])
+      x_i_var <- as.matrix(var_matr[clust_vec == c_i, ])
       C_i <- list(x_i = x_i,
                   x_i_var = x_i_var)
       for (j in (i + 1):n_clusts) {
@@ -171,8 +179,8 @@ reduce_clusters_by_dist <- function(clust_vec = NULL,
           j <- j + 1
         }
         c_j <- clust_ids[j]
-        x_j <- mean_matr[clust_vec == c_j, ]
-        x_j_var <- var_matr[clust_vec == c_j, ]
+        x_j <- as.matrix(mean_matr[clust_vec == c_j, ])
+        x_j_var <- as.matrix(var_matr[clust_vec == c_j, ])
         C_j <- list(x_j = x_j,
                     x_j_var = x_j_var)
         # calc dist
@@ -215,8 +223,8 @@ average_clusters <- function(clusters, mean_matr, var_matr, covm) {
 
   for (clust in seq_along(unique(clust_ids))) {
 
-    clust_mean <- maha_mean(x = mean_matr[clust_ids == clust, ],
-                            x_var = var_matr[clust_ids == clust, ],
+    clust_mean <- maha_mean(x = as.matrix(mean_matr[clust_ids == clust, ]),
+                            x_var = as.matrix(var_matr[clust_ids == clust, ]),
                             covm = covm)
 
     names(clust_mean$mean) %>%
@@ -240,7 +248,6 @@ average_clusters <- function(clusters, mean_matr, var_matr, covm) {
       dplyr::bind_rows(df_tmp) ->
       df_full
   }
-
   return(df_full)
 }
 
@@ -318,29 +325,34 @@ main <- function(arguments) {
                       iva_s = arguments$use_iva,
                       gens = arguments$gens) ->
       matr_prepped
-
-    matr_prepped$means %>%
-      get_clusters_by_cut(cut_at = neutral_clust_height) ->
-      clusts_initial
-
-    clusts_initial$cluster %>%
-      reduce_clusters_by_dist(mean_matr = matr_prepped$means,
-                              var_matr = matr_prepped$sigmas^2,
-                              covm = neutral_cov) ->
-      clusts_final
+    
+    if (all(lapply(matr_prepped, nrow) == 1)) {
+      clusts_final <- data.frame(Full.BC = row.names(matr_prepped$means),
+                                 cluster = "1",
+                                 stringsAsFactors = FALSE)
+    } else {
+      matr_prepped$means %>%
+        get_clusters_by_cut(cut_at = neutral_clust_height) ->
+        clusts_initial
+      
+      clusts_initial$cluster %>%
+        reduce_clusters_by_dist(mean_matr = matr_prepped$means,
+                                var_matr = matr_prepped$sigmas^2,
+                                covm = neutral_cov) ->
+        clusts_final
+    }
 
     adapted_by_env[[env]] %>%
       dplyr::left_join(clusts_final, by = "Full.BC") ->
       adapted_df_w_clust[[env]]
-
+    
     clusts_final %>%
       average_clusters(mean_matr = matr_prepped$means,
                        var_matr = matr_prepped$sigmas^2,
                        covm = neutral_cov) ->
       clust_wise_mean
-
+    
     clust_wise_mean$source <- names(adapted_by_env)[env]
-
     clust_wise_means[[env]] <- clust_wise_mean
   }
 
@@ -386,7 +398,7 @@ arguments <- list(
   infile = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv",
   outdir = "data/fitness_data/fitness_calls",
   gens = "8",
-  exclude = "X48Hr"
+  exclude = "CLM|FLC4|Stan|48Hr"
 )
 
 debug_status <- FALSE

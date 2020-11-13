@@ -41,7 +41,9 @@ main <- function(arguments) {
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     is_neutral  = TRUE,
-                    means_only  = FALSE)
+                    means_only  = FALSE) %>%
+    lapply(as.matrix)
+  
   cat("Done!\n")
   cat("Detecting outliers in neutral barcode set...")
   
@@ -74,7 +76,14 @@ main <- function(arguments) {
     theme(axis.line = element_line(),
           plot.title = element_text(size = 9, face = 'bold')) +
     geom_vline(xintercept = quantile(neutral_test_distn$distances, probs = 1 - as.double(arguments$cutoff)), col = 'darkorange') +
-    ggtitle(paste0("Neutral D distn (", length(neutral_set)," BCs)\n", arguments$base_name, "\ncutoff = ", arguments$cutoff)) ->
+    ggtitle(paste0("Neutral D distn (", length(neutral_set)," BCs)\n", arguments$base_name, "\ncutoff = ", arguments$cutoff))  +
+    scale_x_continuous(limits = c(0, 
+                                  as.vector(
+                                    ceiling(
+                                      quantile(neutral_test_distn$distances, p=0.995)
+                                    )
+                                  )
+    )) ->
     neutral_dist_plot
   
   ggsave(neutral_dist_plot,
@@ -88,15 +97,18 @@ main <- function(arguments) {
   cat("Done!\n")
   cat("Determining adapted barcodes...")
   
-  adapteds <-
-    dat %>%
+  dat %>%
     prep_fit_matrix(excludes    = arguments$exclude,
                     iva_s       = arguments$use_iva,
                     gens        = as.double(arguments$gens),
                     is_neutral  = FALSE,
-                    means_only  = TRUE) %>%
+                    means_only  = TRUE) ->
+    dat_prepped 
+  
+  dat_prepped %>%
     flag_adapteds(testing_distn = neutral_test_distn,
-                  cutoff        = as.double(arguments$cutoff))
+                  cutoff        = as.double(arguments$cutoff)) ->
+    adapteds
   
   suppressWarnings(
     dat %>%
@@ -112,7 +124,7 @@ main <- function(arguments) {
         by = "Full.BC") %>%
       dplyr::filter(is_adapted == TRUE) ->
       dat_for_home
-    )
+  )
   
   source_ref <- dplyr::select(dat, Full.BC, Subpool.Environment)
   adapted_at_home <- flag_adapted_at_home(dat_for_home, source_ref = source_ref)
@@ -182,13 +194,13 @@ Arguments:
 
 args <- list(
   use_iva     = TRUE,
-  infile      = "data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv",
+  infile      = "data/fitness_data/fitness_estimation/hBFA1_s_03_23_18_GC_cutoff_5.csv",
   outdir      = "data/fitness_data/fitness_calls",
-  neutral_col = "Ancestor_YPD_2N",
-  base_name   = "dBFA2_cutoff-5",
+  neutral_col = "YPD_alpha",
+  base_name   = "hBFA1_cutoff-5",
   reps_iter   = 5000,
   reps_final  = 5000,
-  exclude     = "CLM|FLC4|Stan",
+  exclude     = "CLM|FLC4|Stan|48Hr",
   cutoff      = 0.05,
   gens        = 8
 )
