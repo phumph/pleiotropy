@@ -425,6 +425,18 @@ flag_adapted_at_home <- function(df, source_ref, s_cutoff = 0) {
 }
 
 
+load_files_from_arg <- function(arg) {
+  arg %>%
+    strsplit(" ") %>%
+    unlist() ->
+    files
+  lapply(files, readr::read_csv) ->
+    df_list
+  
+  return(df_list)
+}
+
+
 write_out <- function(df,
                       base_name = NULL,
                       split_on = "_adapted",

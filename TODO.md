@@ -1,9 +1,23 @@
 # TODO.md
 
+### 2020-NOV-17
+
+- [ ] Re-examine lineage-level patterns with mutations
+- [ ] Examine pairwise comparisons between environments at lineage level
+- [ ] Examine symmetry between pairs of environments with combined biplots (like in my previous analyses)
+- [ ] Make hBFA heatmap
+- [ ] Re-define autodip cutoff to exclude FLC4_1N_9 lineages
+
+### 2020-NOV-14
+
+- [x] Perform hierarchical clustering of all clusters
+- [x] Decide on plot framework for combining dendro with heatmap
+- [ ] Compute variance components on fitness clusters
+
 ### 2020-OCT-31
 
-- [ ] Fix `kable` calls throughout to re-specify table format, using global.
-- [ ] Fix `cluster_lineages.R` error: non-conformable arrays, for hBFA
+- [x] Fix `kable` calls throughout to re-specify table format, using global.
+- [x] Fix `cluster_lineages.R` error: non-conformable arrays, for hBFA
 
 
 ### Notes
