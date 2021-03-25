@@ -4,56 +4,7 @@ csl: harvard.cls
 bibliography: ../plt.bib
 ---
 
-<!--
-https://livingthing.danmackinlay.name/citation_management.html
--->
-
 ### Supplemental Methods
-
-<!-- MDTOC maxdepth:6 firsth1:0 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
-
-  - [Double barcode design](#double-barcode-design)   
-         - [Construct design](#construct-design)   
-      - [Transformation protocols](#transformation-protocols)   
-      - [Barcoded clone set diversity validation](#barcoded-clone-set-diversity-validation)   
-   - [Experimental evolution protocols](#experimental-evolution-protocols)   
-      - [Description of evolution environments](#description-of-evolution-environments)   
-      - [Serial passage and sampling protocols](#serial-passage-and-sampling-protocols)   
-      - [Low coverage time-course lineage tracking](#low-coverage-time-course-lineage-tracking)   
-      - [Clone selection for whole-genome sequencing](#clone-selection-for-whole-genome-sequencing)   
-   - [Bulk Fitness Assay](#bulk-fitness-assay)   
-      - [Assembling clone pools](#assembling-clone-pools)   
-      - [Bulk competition protocols](#bulk-competition-protocols)   
-      - [High-throughput barcode sequencing](#high-throughput-barcode-sequencing)   
-         - [Library preparation](#library-preparation)   
-         - [Barcode counting and quality filtering](#barcode-counting-and-quality-filtering)   
-         - [Clone pool sequencing](#clone-pool-sequencing)   
-         - [Time-point exclusions](#time-point-exclusions)   
-      - [Fitness inference](#fitness-inference)   
-         - [Demultiplexing Illumina reads and counting barcodes](#demultiplexing-illumina-reads-and-counting-barcodes)   
-         - [Clustering / error correcting](#clustering-error-correcting)   
-         - [Final steps](#final-steps)   
-   - [Whole-genome clone sequencing](#whole-genome-clone-sequencing)   
-      - [Clone selection](#clone-selection)   
-      - [Library preparation](#library-preparation)   
-      - [Variant calling pipeline](#variant-calling-pipeline)   
-         - [FASTQ processing](#fastq-processing)   
-         - [SNP and small indel variant calling](#snp-and-small-indel-variant-calling)   
-         - [Structural variant calling](#structural-variant-calling)   
-         - [Variant annotation](#variant-annotation)   
-         - [Filtering SNPs, small indels, and structural variants](#filtering-snps-small-indels-and-structural-variants)   
-         - [Identifying large rearrangements and aneuploidies](#identifying-large-rearrangements-and-aneuploidies)   
-   - [Statistical analyses of fitness and pleiotropy](#statistical-analyses-of-fitness-and-pleiotropy)   
-      - [Lineage fitness clustering analyses](#lineage-fitness-clustering-analyses)   
-         - [$k$-means](#k-means)   
-         - [Hierarchical clustering](#hierarchical-clustering)   
-         - [Identifying auto-diploidized lineages](#identifying-auto-diploidized-lineages)   
-         - [Variance partitioning](#variance-partitioning)   
-      - [Linking phenotypes with genotypes](#linking-phenotypes-with-genotypes)   
-         - [Mutual information](#mutual-information)   
-         - [Permutation analyses](#permutation-analyses)   
-
-<!-- /MDTOC -->
 
 #### Double barcode design
 
@@ -75,7 +26,11 @@ To estimate barcode diversity in each of the single libraries, we performed high
 
 **Table S1.** Primers and details on DBC construction, primers, etc.
 
+> WIP
+
 **Table S2.** with statistics on library size, diversity, from ancestral pools.
+
+> WIP
 
 #### Experimental evolution protocols
 
@@ -87,6 +42,8 @@ Base medium for most conditions was SC complete (YNB+ Nitrogen- 1501-500, SC-130
 
 **Table S3.** Media recipe per source environment.
 
+> WIP
+
 Serial transfers were performed by transferring $\sim 10^7$ cells (~ 400 µL) into fresh media at the designated transfer time (24 hours for most environments; Table S3). We generated archival glycerol stocks (3 $\times$ 1 mL culture at 16.6% final glycerol concentration), and pelleted, washed, and concentrated the remaining culture volume (90 mL) for later DNA extraction and barcode sequencing (described below).
 
 #### Bulk Fitness Assay
@@ -95,17 +52,16 @@ Serial transfers were performed by transferring $\sim 10^7$ cells (~ 400 µL) in
 
 We generated pools of adapted genotypes by isolating individual yeast clones from each of our evolution environments. To do so, we first determined appropriate time point(s) from which to sample in order to gather a large number of unique lineages carrying distinct beneficial mutations.
 
-We considered
+When isolating lineages from time points throughout the evolutions, we were faced with trying to balance requiring that clones be adapted with the necessity of sampling as many _unique_ adapted lineages at once. We first measured population mean fitness using bulk population fitness assays against a fluorescently labeled reference strain (describe below) to determine time points with high mean fitness. For many environments, sampling clones from time-point(s) shortly after mean fitness began to consistently increase yielded sufficiently high numbers of lineages that were adapted and had unique barcodes.
 
-by considering the trade-off between the probability of sampling adapted clones versus the
+However, several evolution environments showing positive mean fitness were dominated by a very small number of lineages, such that few unique barcodes were recovered after clone isolation. To solve this problem, we took advantage of low-coverage barcode sequencing of various time points from the initial evolutions. Using a simple heuristic to define whether barcodes were adapted, we calculated the time point which would yield the largest number of unique and adapted barcodes in a sample of $N$ clones per time point.
 
-We then inoculated a ~10 µL aliquot of frozen glycerol stocks corresponding to the selected time-point into 5 mL of YPD and grew this pre-culture overnight. This culture was diluted to $10^{5}$ cells per mL in PBS
-
+To isolate clones from the selected time points, we inoculated a ~10 µL aliquot of frozen glycerol stocks of the target sample into 5 mL of YPD and grew this pre-culture overnight. This culture was suspended at $10^{5}$ cells per mL in PBS before clone isolation into 96-well plates by way of single cell sorting.
 
 
 ##### Bulk competition protocols
 
-Parris
+> WIP: Parris
 
 #### High-throughput barcode sequencing
 
@@ -121,9 +77,11 @@ Amplification of the barcode region was performed as previously described [@Levy
 
 **Table S4**. Primers used for library construction
 
+> WIP
+
 **Table S5.** Time points and replicates used for fitness inference from all BFA assays.
 
-
+> WIP
 
 #### Fitness inference
 
@@ -162,17 +120,21 @@ Because the bulk fitness assays were all sequenced over multiple lanes, we perfo
 
 #### Clone selection
 
-Parris/Milo
+> WIP: Parris/Milo
 
 **Table S7.** Adapted clones per environment inferred from BFAs, with number with WGS sequencing data.
 
+> WIP
+
 #### Library preparation
 
-Lucas/Parris
+> WIP: Lucas/Parris
 
 #### Variant calling pipeline
 
 **Table S8.** Number of mutations discovered per clone per source and ploidy.
+
+> WIP
 
 The pipeline for variants calling has been detailed in Li, et al., 2019 (Nature Eco&Evo). Briefly, Sentieon Genomic Tools Version 201711.02 (REF: `doi:10.1101/115717`) were used for SNP, small indel and structural variants calling with *S. cerevisiae* S288C reference genome R64-1-1 (https://downloads.yeastgenome.org/sequence/S288C_reference/genome_releases/). The source code for variants calling and annotation (section 7.2-7.6) can be found at https://github.com/liyuping927/DNAscope-variants-calling.
 
@@ -265,23 +227,29 @@ First, mitochondrial variants were discarded. Second, any variants in genes *FLO
 Furthermore, all variants were further verified by manually checking `.bam` files after alignment. By doing this, variants within repetitive regions and regions with a poor alignment were filtered out. More importantly, due to mishandling, sequencing data used here is contaminated by other yeast species/isolates at a low frequency (0-30%). While this low frequency contamination does not pose a big problem for variants calling in haploids, it leads to excessive miscalling of heterozygous variants in diploids. These miscalled heterozygous variants are caused by genetic variations between S288C (the *S. cerevisiae* strain used in this study) and the contaminated yeast source and often appear in “patch” (multiple variants within a small region, e.g. 4 variants within 100 bp), which is statistically impossible considering the short-period evolutionary time. To remove false variants caused by contamination, we manually checked alignment through `.bam`files and removed heterozygous variants appearing in patch. In addition, the ratio of ref:alt is used to assist the removal of false variants. Variants with Ref:Alt >3:1 are very likely to be a result of low-frequency contamination. Lastly, ambiguous variants were checked using blast. Variants that are not present in other yeast species/isolates were considered as *de novo* mutations arising during the course of evolution.
 
 ##### Identifying large rearrangements and aneuploidies
-Lucas
 
+> WIP: Lucas
 
 ### Statistical analyses of fitness and pleiotropy
-Parris
 
-#### Lineage fitness clustering analyses
-##### $k$-means
-##### Hierarchical clustering
+> WIP Parris
+
+#### Statistical analysis of fitness patterns
+##### Identifying adapted lineages
 ##### Identifying auto-diploidized lineages
+##### Clustering and variance partitioning
 
 Table S8. Number of lineages in each of $k$ clusters defines for each source environment, as well as robustness statistics to groupings.
 
-##### Variance partitioning
+> WIP
+
 #### Linking phenotypes with genotypes
 ##### Mutual information
-##### Permutation analyses
+##### Hierarchical gene--pathway analysis
+
+
+<hr>
+
 
 
 ### References
