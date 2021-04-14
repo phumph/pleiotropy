@@ -22,8 +22,8 @@ FIGDIR=$(OUTPUT)/figures
 
 WGS: data/mutation_data/mutations_by_bc.csv
 
-data/mutation_data/mutations_by_bc.csv:
-	Rscript scripts/combine_BCs_and_WGS.R
+data/mutation_data/mutations_by_bc.csv: scripts/combine_BCs_and_WGS.R
+	Rscript $<
 
 .PHONY: figs
 
@@ -34,7 +34,15 @@ fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf
 
+fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_heatmap_by_bc_plot.pdf
+fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_heatmap_by_bc_plot.pdf
+fig_deps += $(FIGDIR)/heatmap_by_bc_plot_combined.pdf
+
+
 figs: $(fig_deps)
+
+
+
 
 $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf:
 	Rscript scripts/plot_by_cluster.R \
@@ -84,7 +92,6 @@ $(COMBINED)/$(hBFA_BASENAME)_compiled_data_by_barcode.csv:
 		$(OUTDIR)/$(hBFA_BASENAME)_adapted_w_clusts.csv \
 		data/mutation_data/mutations_by_bc.csv
 
-
 $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv:
 	Rscript scripts/compile_data_by_barcode.R \
 		--use_iva \
@@ -94,7 +101,6 @@ $(COMBINED)/$(dBFA_BASENAME)_compiled_data_by_barcode.csv:
 		$(OUTDIR)/$(dBFA_BASENAME)_adapteds.csv \
 		$(OUTDIR)/$(dBFA_BASENAME)_adapted_w_clusts.csv \
 		data/mutation_data/mutations_by_bc.csv
-
 
 $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_plot-data.csv $(TABLEDIR)/$(hBFA_BASENAME)_source_summaries_table.csv $(FIGDIR)/$(hBFA_BASENAME)_source_summaries_plot.pdf:
 	Rscript scripts/summarise_sources.R \

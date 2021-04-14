@@ -166,9 +166,9 @@ bc_cols <- c('Full.BC',
   'Putative.Environment')
 
 dplyr::bind_rows(
-  dplyr::select(subpools_dbfa2, bc_cols),
-  dplyr::select(subpools_hbfa1, bc_cols),
-  dplyr::select(subpools_hbfa2, bc_cols)
+  dplyr::select(subpools_dbfa2, all_of(bc_cols)),
+  dplyr::select(subpools_hbfa1, all_of(bc_cols)),
+  dplyr::select(subpools_hbfa2, all_of(bc_cols))
 ) -> bcs_envs
 
 all_vars <-
@@ -225,7 +225,12 @@ variants <-
 # filter out those without matches
 variants_bc <-
   variants %>%
-  dplyr::filter(!is.na(Full.BC))
+  dplyr::filter(!is.na(Full.BC)) %>%
+  dplyr::mutate(GQ = as.character(GQ),
+                QUAL = as.character(QUAL),
+                POS = as.character(POS),
+                PL = gsub(",", ";", PL),
+                AD = gsub(",", ";", AD))
 
 ###
 ### Export data
@@ -237,3 +242,7 @@ write.table(variants_bc,
             quote = T,
             row.names = F,
             col.names = T)
+
+readr::write_delim(variants_bc,
+                   delim = ",",
+                   file = file.path("data/mutation_data/mutations_by_bc.csv"))

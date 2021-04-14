@@ -430,9 +430,8 @@ load_files_from_arg <- function(arg) {
     strsplit(" ") %>%
     unlist() ->
     files
-  lapply(files, readr::read_csv) ->
+  lapply(files, readr::read_csv, col_types = readr::cols()) ->
     df_list
-  
   return(df_list)
 }
 

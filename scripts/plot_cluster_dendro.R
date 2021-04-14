@@ -69,14 +69,14 @@ plot_dendro <- function(df, mut_df, focal_ploidy = "2N", remove_home = FALSE) {
   source_col_df <- data.frame(source = unique(df_labs$source),
                               col = source_cols,
                               stringsAsFactors = FALSE)
-  
+
   dendro_dat$labels %>% 
     dplyr::select(label) %>%
     dplyr::left_join(dplyr::select(df_labs, row_id, source) %>% 
                        unique(), by = c("label" = "row_id")) %>%
     dplyr::left_join(source_col_df) ->
     source_labs
-  
+
   df_dendro %>%
     set("leaves_pch", 19) %>% 
     set("leaves_col", paste0(source_labs$col)) %>%
@@ -92,14 +92,14 @@ plot_dendro <- function(df, mut_df, focal_ploidy = "2N", remove_home = FALSE) {
                  y_shift = 0.025,
                  rowLabels = "")  
   }
-  
+
   df_wide[ , -1] %>%
     apply(2, scale) %>%
     data.frame() ->
     df_wide_scaled
-  
+
   df_wide_scaled$row_id <- df_wide$row_id
-  
+
   # plot heatmap
   df_wide_scaled %>%
     dplyr::select(-names(na_cols[na_cols > 0])) %>%
@@ -239,29 +239,27 @@ main <- function(arguments) {
     stringr::str_extract_all(stringr::regex(".BFA")) %>%
     unlist() ->
     assays_mut
-  
+
   stopifnot(all(assays_mut == assays_fit))
-  
+
   ploidies = c("hBFA" = "1N", "dBFA" = "2N")
   ploidy_dat <- ploidies[assays_fit]
-  
+
   purrr::map2(fit_dat, ploidy_dat, function(x, y) dplyr::mutate(x, ploidy = y)) ->
     fit_dat
-  
+
   fit_dat %>%
     dplyr::bind_rows() ->
     fit_df
-  
+
   mut_dat %>%
     dplyr::bind_rows() ->
     mut_df
-  
+
   # Cluster clusters
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::
-  
+
   plot_dendro(df = fit_df, mdf = mut_df, focal_ploidy = "2N", remove_home = TRUE)
-  
-  
 }
 
 
