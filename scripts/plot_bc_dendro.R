@@ -7,6 +7,9 @@
 # 2. mutation data by barcode for both ploidies
 
 # Outputs 
+# 1. Heatmap sub-plots
+# 2. Mutation heatmap sub-plot
+# 3. Dendrogram sub-plots
 
 # ------ #
 # header #
@@ -34,7 +37,7 @@ full_rankify <- function(df) {
         tidyr::pivot_wider(id_cols = c(row_id, source, ploidy),
                            names_from = bfa_env,
                            values_from = s) %>%
-        tidyr::pivot_longer(cols = names(df_wide)[!names(df_wide) %in% c("row_id", "source", "ploidy")],
+        tidyr::pivot_longer(cols = names(.)[!names(.) %in% c("row_id", "source", "ploidy")],
                             names_to = "bfa_env",
                             values_to = "s") ->
         df_filled
@@ -43,6 +46,9 @@ full_rankify <- function(df) {
 
 
 interpolate <- function(sub_df) {
+    # Split by bfa_enf; mean-impute for NA values
+    # Assumes each sub_df is of a single source
+    stopifnot(length(unique(sub_df$source)) == 1)
     if (sum(is.na(sub_df$s)) == 0) {
         return(sub_df)
     }
@@ -62,7 +68,7 @@ interpolate <- function(sub_df) {
 
 
 interpolate_s <- function(df) {
-    df_split <- split(df, df_full$source)
+    df_split <- split(df, df$source)
     df_split %>%
         lapply(interpolate) ->
         interpolated_srcs
@@ -70,6 +76,7 @@ interpolate_s <- function(df) {
         do.call(rbind, interpolated_srcs)
     )
 }
+
 
 apply_df_filters <- function(df, focal_ploidy = c("1N", "2N"),
                              remove_home = FALSE,
@@ -265,7 +272,7 @@ make_mutation_plot <- function(df) {
     df %>%
         dplyr::mutate(plot_hit_binary = ifelse(!is.na(plot_hit), 0.1, NA)) %>%
         ggplot(aes(x = GENE, y = row_id)) +
-        geom_hline(yintercept = df$row_id[!is.na(mut_hits$plot_hit)], lwd = 0.25, alpha = 0.5) +
+        geom_hline(yintercept = df$row_id[!is.na(df$plot_hit)], lwd = 0.25, alpha = 0.5) +
         geom_point(aes(size = plot_hit), alpha = 0.5) +
         theme_plt() +
         theme(axis.text.y = element_blank(),
@@ -317,6 +324,8 @@ main <- function(arguments) {
         dplyr::arrange(row_id) ->
         df_tmp
     
+    # interpolate NA fitness values as mean of source
+    # within a given bfa_env
     df_tmp %>%
         full_rankify() %>%
         interpolate_s() ->
@@ -338,31 +347,35 @@ main <- function(arguments) {
                        leaf_col_type = "ploidy") -> 
         plot_dendro_ploidy
     
+    # save dendro sub-plots
     cowplot::plot_grid(plot_dendro_source) %>% 
-        ggsave(filename = "output/figures/dendro_by_bc_source.pdf",
+        ggsave(filename = file.path(args$outdir,"dendro_by_bc_source.pdf"),
                width = 6,
                height = 12,
                units = "in",
                device = "pdf"
         )
     cowplot::plot_grid(plot_dendro_ploidy) %>% 
-        ggsave(filename = "output/figures/dendro_by_bc_ploidy.pdf",
+        ggsave(filename = file.path(args$outdir, "dendro_by_bc_ploidy.pdf"),
                width = 6,
                height = 12,
                units = "in",
                device = "pdf"
         )
     
-    # Produce heatmap
+    # Produce fitness heatmap
     # ::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+    # re-scale fitness per column (mean centered, sigma-scaled)
     df_tmp %>%
         rescale_s() ->
         df_scaled
+
     df_scaled$row_id <- factor(df_scaled$row_id, levels = dendro_and_labels$names$bc_labels)
     df_scaled$bfa_env <- factor(df_scaled$bfa_env, levels = dendro_and_labels$names$bfa_labels)
     heatmap_plot <- plot_heatmap(df_scaled)
     heatmap_plot %>%
-        ggsave(filename = "output/figures/heatmap_by_bc.pdf",
+        ggsave(filename = file.path(args$outdir, "heatmap_by_bc.pdf"),
                width = 1.65,
                height = 12,
                units = "in",
@@ -377,6 +390,9 @@ main <- function(arguments) {
         prep_mutation_data(bc_labels = dendro_and_labels$names$bc_labels) ->
         mut_df_for_plot
     
+    # Produce mutation heatmap
+    # ::::::::::::::::::::::::::::::::::::::::::::::::::::
+
     mut_df_for_plot %>%
         make_mutation_plot() ->
         mut_plot
@@ -384,7 +400,7 @@ main <- function(arguments) {
     ggpubr::ggarrange(plotlist = list(heatmap_plot, mut_plot),
                       widths = c(1, 8), ncol = 2,
                       align = "hv", common.legend = TRUE) %>%
-        ggsave(filename = "output/figures/heatmap_with_muts.pdf",
+        ggsave(filename = file.path(args$outdir, "heatmap_with_muts.pdf"),
                height = 12,
                width = 18,
                units = "in",
@@ -397,19 +413,18 @@ main <- function(arguments) {
 # ==== #
 
 
-"plot_by_cluster.R
+"plot_bc_dendro.R
 
 Usage:
-    plot_by_cluster.R [--help]
-    plot_by_cluster.R [options] <fitness_file> <pleiotropy_file>
+    plot_bc_dendro.R [--help]
+    plot_bc_dendro.R [options] <fitness_files> <mutation_file>
 
 Options:
     -h --help                     Show this screen.
     -o --outdir=<outdir>          Output directory [default: ./]
-    -p --png                      Flag to determine output device as PNG [default: PDF]
 Arguments:
-    fitness_file                  fitness-by-cluster file (output 1 from summarise_clusters.R)
-    pleiotropy_file               pleiotropy summary file (output 2 from summarise_clusters.R)
+    fitness_files                 space-separated quoted string of fitness files
+    mutation_file                 mutations_by_bc file
 " -> doc
 
 # define default args for debug_status == TRUE
@@ -420,11 +435,11 @@ args <- list(
     png = FALSE
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
-cat("\n*************************\n")
-cat("* plot_cluster_dendro.R *\n")
-cat("*************************\n\n")
+cat("\n********************\n")
+cat("* plot_bc_dendro.R *\n")
+cat("********************\n\n")
 
 arguments <- run_args_parse(args, debug_status)
 main(arguments)

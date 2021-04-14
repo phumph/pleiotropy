@@ -27,6 +27,7 @@ data/mutation_data/mutations_by_bc.csv: scripts/combine_BCs_and_WGS.R
 
 .PHONY: figs
 
+# cluster-level plots
 fig_deps := $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf
 fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf
 fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf
@@ -34,15 +35,19 @@ fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf
 
-fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_heatmap_by_bc_plot.pdf
-fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_heatmap_by_bc_plot.pdf
-fig_deps += $(FIGDIR)/heatmap_by_bc_plot_combined.pdf
-
+# barcode-level plots
+fig_deps += $(FIGDIR)/heatmap_by_bc_plot.pdf
+fig_deps += $(FIGDIR)/heatmap_with_muts.pdf
+fig_deps += $(FIGDIR)/dendro_by_bc_ploidy.pdf
+fig_deps += $(FIGDIR)/dendro_by_bc_source.pdf
 
 figs: $(fig_deps)
 
-
-
+$(FIGDIR)/heatmap_by_bc_plot.pdf $(FIGDIR)/heatmap_with_muts.pdf $(FIGDIR)/dendro_by_bc_ploidy.pdf $(FIGDIR)/dendro_by_bc_source.pdf:
+	Rscript scripts/plot_bc_dendro.R \
+		"data/combined/hBFA1_cutoff-5_compiled_data_by_barcode.csv data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv" \
+		"data/mutation_data/mutations_by_bc.csv" \
+		-o $(FIGDIR)
 
 $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf:
 	Rscript scripts/plot_by_cluster.R \
@@ -50,7 +55,7 @@ $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf
 		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv \
 		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_table.csv
 
-$(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf:
+$(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf: scripts/plot_by_cluster.R
 	Rscript scripts/plot_by_cluster.R \
 		--outdir=$(FIGDIR) \
 		$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv \
