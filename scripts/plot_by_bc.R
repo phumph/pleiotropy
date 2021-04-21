@@ -1,6 +1,6 @@
 #! /usr/bin/env Rscript
 
-# plot_bc_dendro.R
+# plot_by_bc.R
 
 # Inputs
 # 1. compile data by barcode table for both ploidies
@@ -10,6 +10,7 @@
 # 1. Heatmap sub-plots
 # 2. Mutation heatmap sub-plot
 # 3. Dendrogram sub-plots
+# 4. t-SNE sub-plots
 
 # ------ #
 # header #
@@ -17,6 +18,7 @@
 
 suppressWarnings(suppressMessages(library(dplyr)))
 suppressWarnings(suppressMessages(library(tidyr)))
+suppressWarnings(suppressMessages(library(Rtsne)))
 suppressWarnings(suppressMessages(library(docopt)))
 suppressWarnings(suppressMessages(library(ggpubr)))
 suppressWarnings(suppressMessages(library(ggplot2)))
@@ -287,6 +289,71 @@ make_mutation_plot <- function(df) {
 }
 
 
+plot_tsne <- function(df, focal_envs, mutation_df) {
+    
+    df %>%
+        tidyr::pivot_wider(id_cols = c("row_id", "source", "ploidy"),
+                           names_from = "bfa_env", 
+                           values_from = "s") ->
+        df_wide
+    df_wide %>%
+        dplyr::select(-c("row_id", "source", "ploidy")) %>%
+        as.matrix ->
+        df_matrix
+    row.names(df_matrix) <- df_wide$row_id
+    tsne1 <- Rtsne::Rtsne(df_matrix,
+                          perplexity = 30,
+                          theta = 0.5,
+                          dims = 2)
+    tsne1$Y %>%
+        as.data.frame() %>%
+        dplyr::rename("tsne_x" = "V1", "tsne_y" = "V2") %>%
+        dplyr::bind_cols(df_wide[,c("row_id", "source", "ploidy")]) %>%
+        dplyr::mutate(source_ploidy = paste0(source, "_", ploidy)) ->
+        tdat
+    
+    # create color mapping for source_ploidy factor
+    set.seed(123)
+    sp_colors <- sample(pals::kelly(), size = 18, replace = FALSE)
+    names(sp_colors) <- unique(tdat$source_ploidy)
+    sp_color_scale <- ggplot2::scale_fill_manual(name="source_ploidy", values = sp_colors)
+    
+    tdat %>%
+        #dplyr::filter(source %in% focal_envs) %>%
+        ggplot(aes(x = tsne_x, y = tsne_y)) +
+        geom_hline(yintercept = 0, lwd = 0.5, col = "gray60") +
+        geom_vline(xintercept = 0, lwd = 0.5, col = "gray60") +
+        geom_point(aes(fill = source_ploidy), pch = 21, alpha = 0.75, col = "black") + 
+        sp_color_scale +
+        theme_plt() +
+        theme(
+            legend.key.size = unit(0.4, 'cm')
+        ) ->
+        tsne_plot1
+    
+    tdat %>%
+        dplyr::filter(source %in% focal_envs) %>%
+        ggplot(aes(x = tsne_x, y = tsne_y)) +
+        geom_hline(yintercept = 0, lwd = 0.5, col = "gray60") +
+        geom_vline(xintercept = 0, lwd = 0.5, col = "gray60") +
+        geom_point(aes(fill = source_ploidy), pch = 21, alpha = 0.75, col = "black") + 
+        facet_grid(source ~ ploidy) +
+        sp_color_scale +
+        xlab("") +
+        ylab("") +
+        theme_plt() ->
+        tsne_plot2
+    
+    plot_list <- ggpubr::ggarrange(plotlist = list(tsne_plot1, tsne_plot2),
+                                   align = "hv", nrow = 1, ncol = 2,
+                                   widths = c(1, 0.7),
+                                   common.legend = TRUE, 
+                                   legend = "right",
+                                   labels = c("a", "b"))
+    return(plot_list)
+}
+
+
 main <- function(arguments) {
     
     # Prepare fitness data
@@ -330,23 +397,24 @@ main <- function(arguments) {
         full_rankify() %>%
         interpolate_s() ->
         fit_df_interpolated
-    
+
     # perform clustering on barcodes and output list with
     # 1. dendro object
     # 2. ordered factor levels (BC) for heatmap
     dendro_and_labels <- pre_cluster_for_dendro(df = fit_df_interpolated)
-    
+
     dendro_and_labels$dends$bc_dendro %>%
         plot_bc_dendro(dend_labels = dendro_and_labels$names$bc_labels,
                        df = df_tmp,
                        leaf_col_type = "source") -> 
         plot_dendro_source
+
     dendro_and_labels$dends$bc_dendro %>%
         plot_bc_dendro(dend_labels = dendro_and_labels$names$bc_labels,
                        df = df_tmp,
                        leaf_col_type = "ploidy") -> 
         plot_dendro_ploidy
-    
+
     # save dendro sub-plots
     cowplot::plot_grid(plot_dendro_source) %>% 
         ggsave(filename = file.path(args$outdir,"dendro_by_bc_source.pdf"),
@@ -362,7 +430,7 @@ main <- function(arguments) {
                units = "in",
                device = "pdf"
         )
-    
+
     # Produce fitness heatmap
     # ::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -381,22 +449,22 @@ main <- function(arguments) {
                units = "in",
                device = "pdf"
         )
-    
+
     # Prepare mutation data
     # ::::::::::::::::::::::::::::::::::::::::::::::::::::
-    
+
     mut_dat <- read.csv(arguments$mutation_file)
     mut_dat %>%
         prep_mutation_data(bc_labels = dendro_and_labels$names$bc_labels) ->
         mut_df_for_plot
-    
+
     # Produce mutation heatmap
     # ::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     mut_df_for_plot %>%
         make_mutation_plot() ->
         mut_plot
-    
+
     ggpubr::ggarrange(plotlist = list(heatmap_plot, mut_plot),
                       widths = c(1, 8), ncol = 2,
                       align = "hv", common.legend = TRUE) %>%
@@ -405,6 +473,34 @@ main <- function(arguments) {
                width = 18,
                units = "in",
                device = "pdf")
+
+    # produce t-SNE plots
+    # ::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+    # transform mutation data for plotting
+    # get down to BCs with mutation data
+    # filter mutation list to those with lots of hits (focus on n=8 for now)
+    # plot tsne with only has_wgs BCs
+    # color by GENE for the multi-hit genes
+    # mut_df_for_plot %>%
+    #     dplyr::filter(row_id %in% unique(mut_dat$Full.BC)) %>%
+    #     unique() ->
+    #     bcs_for_mut_plot
+    # mut_df_for_plot %>%
+    #     dplyr::filter(hits > 0) %>%
+    #     dplyr::group_by(GENE) %>%
+    #     dplyr::summarise(n_bcs = length(unique(row_id))) %>%
+    #     dplyr::arrange(desc(n_bcs)) ->
+    #     mut_totals
+    focal_envs <- c("GlyEtOH", "pH7_3", "CLM", "FLC4")
+    tsne_plot <- plot_tsne(df = fit_df_interpolated, focal_envs)
+    tsne_plot %>%
+        ggsave(filename = file.path(args$outdir, "tsne_by_bc.pdf"),
+               width = 8,
+               height = 4,
+               units = "in",
+               device = "pdf"
+        )
 }
 
 
@@ -435,11 +531,11 @@ args <- list(
     png = FALSE
 )
 
-debug_status <- FALSE
+debug_status <- TRUE
 
-cat("\n********************\n")
-cat("* plot_bc_dendro.R *\n")
-cat("********************\n\n")
+cat("\n****************\n")
+cat("* plot_by_bc.R *\n")
+cat("****************\n\n")
 
 arguments <- run_args_parse(args, debug_status)
 main(arguments)
