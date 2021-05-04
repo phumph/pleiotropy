@@ -501,6 +501,14 @@ main <- function(arguments) {
                units = "in",
                device = "pdf"
         )
+    tsne_plot %>%
+        ggsave(filename = file.path(args$outdir, "tsne_by_bc.png"),
+               width = 8,
+               height = 4,
+               units = "in",
+               device = "png",
+               dpi = 300
+        )
 }
 
 
@@ -531,7 +539,7 @@ args <- list(
     png = FALSE
 )
 
-debug_status <- TRUE
+debug_status <- FALSE
 
 cat("\n****************\n")
 cat("* plot_by_bc.R *\n")

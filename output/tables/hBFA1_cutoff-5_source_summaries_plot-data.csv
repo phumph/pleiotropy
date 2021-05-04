@@ -20,9 +20,9 @@ YPD,0,0,3,n_bcs_adapted_wgs,0
 21C,0,0,3,n_bcs,301
 21C,0,0,3,n_bcs_adapted,2
 21C,0,0,3,n_bcs_adapted_wgs,0
-37C,0,NaN,1,n_bcs,119
-37C,0,NaN,1,n_bcs_adapted,0
-37C,0,NaN,1,n_bcs_adapted_wgs,0
-pH3_8,0.01,NaN,1,n_bcs,128
-pH3_8,0.01,NaN,1,n_bcs_adapted,0
-pH3_8,0.01,NaN,1,n_bcs_adapted_wgs,0
+37C,0,NA,1,n_bcs,119
+37C,0,NA,1,n_bcs_adapted,0
+37C,0,NA,1,n_bcs_adapted_wgs,0
+pH3_8,0.01,NA,1,n_bcs,128
+pH3_8,0.01,NA,1,n_bcs_adapted,0
+pH3_8,0.01,NA,1,n_bcs_adapted_wgs,0

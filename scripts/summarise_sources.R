@@ -119,7 +119,17 @@ main <- function(arguments) {
            height = plot_height,
            device = "pdf",
            units = "in")
-  
+  source_summaries$plot %>%
+    ggsave(filename = file.path(arguments$outdir,
+                                "figures",
+                                paste0(bfa_prfx,
+                                       "_source_summaries_plot",
+                                       ".png")),
+           width = plot_width,
+           height = plot_height,
+           device = "png",
+           units = "in",
+           dpi = 300)
 }
 
 # ==== #

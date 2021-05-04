@@ -1,3 +1,15 @@
+### RECIPES FOR MKDOCS
+### phumph.github.io/pleiotropy/
+
+.PHONY: site serve
+
+site:
+	cp output/figures/*.png docs/img/
+	mkdocs build docs
+
+serve:
+	mkdocs serve
+
 ###
 ### VARIABLES
 ###
@@ -31,9 +43,11 @@ data/mutation_data/mutations_by_bc.csv: scripts/combine_BCs_and_WGS.R
 fig_deps := $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf
 fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf
 fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf
+fig_deps += $(FIGDIR)/$(dBFA_BASENAME)_mu_v_sigma_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf
 fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf
+fig_deps += $(FIGDIR)/$(hBFA_BASENAME)_mu_v_sigma_plot.pdf
 
 # barcode-level plots
 fig_deps += $(FIGDIR)/heatmap_by_bc_plot.pdf
@@ -49,13 +63,13 @@ $(FIGDIR)/heatmap_by_bc_plot.pdf $(FIGDIR)/heatmap_with_muts.pdf $(FIGDIR)/dendr
 		"data/mutation_data/mutations_by_bc.csv" \
 		-o $(FIGDIR)
 
-$(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf:
+$(FIGDIR)/$(dBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_clusts_plot.pdf $(FIGDIR)/$(dBFA_BASENAME)_mu_v_sigma_plot.pdf: scripts/plot_by_cluster.R
 	Rscript scripts/plot_by_cluster.R \
 		--outdir=$(FIGDIR)\
 		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_plot-data.csv \
 		$(TABLEDIR)/$(dBFA_BASENAME)_cluster_summaries_table.csv
 
-$(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf: scripts/plot_by_cluster.R
+$(FIGDIR)/$(hBFA_BASENAME)_mu_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_pleio_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_clusts_plot.pdf $(FIGDIR)/$(hBFA_BASENAME)_mu_v_sigma_plot.pdf: scripts/plot_by_cluster.R
 	Rscript scripts/plot_by_cluster.R \
 		--outdir=$(FIGDIR) \
 		$(TABLEDIR)/$(hBFA_BASENAME)_cluster_summaries_plot-data.csv \

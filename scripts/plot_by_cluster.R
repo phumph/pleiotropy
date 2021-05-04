@@ -57,15 +57,15 @@ generate_resamples <- function(mu_vec, se_vec, bfa_envs, source, cluster, resamp
 
 
 plot_means_by_source <- function(df, hBFA = FALSE) {
-  
+
   source_order <- c("YPD", "SC",
                     "21C", "37C",
                     "pH3_8", "pH7_3",
                     "GlyEtOH","02M_NaCl",
                     "FLC4", "CLM")
-  
+
   df$source <- factor(df$source, levels = source_order)
-  
+
   if (hBFA == FALSE) {
     df %>%
       dplyr::filter(!source %in% c("FLC4", "CLM")) ->
@@ -75,7 +75,7 @@ plot_means_by_source <- function(df, hBFA = FALSE) {
       dplyr::filter(!source %in% c("CLM")) ->
       df_for_plot
   }
-  
+
   df_for_plot %>%
     ggplot(aes(x = wmu_x_home, y = wmu_x_away)) +
     facet_wrap(~ source, ncol = 2) +
@@ -85,13 +85,8 @@ plot_means_by_source <- function(df, hBFA = FALSE) {
                       ymax = wmu_x_away + wse_away), col = "gray15", width = 0) +
     geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
                        xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
-    geom_point(size = 2, fill = "gray15", col = "white", pch = 21) +
-    # coord_cartesian(xlim = c(0, 0.1),
-    #                 ylim = c(-0.06, 0.06)) +
-    # scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
-    # scale_x_continuous(breaks = seq(0, 0.1, 0.02)) +
+    geom_point(size = 2, col = "gray15") +
     theme_plt() +
-    #xlab("home fitness") +
     xlab("") +
     ylab("away fitness (mean)") +
     geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
@@ -99,7 +94,7 @@ plot_means_by_source <- function(df, hBFA = FALSE) {
                      size = 3,
                      color = "gray40") ->
     mu_plot_no_drug
-  
+
   if (hBFA == TRUE) {
     mu_plot <- mu_plot_no_drug + xlab("home fitness")
   } else {
@@ -162,7 +157,7 @@ plot_sigma_by_source <- function(df, hBFA = FALSE) {
     geom_vline(xintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
     geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
                        xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
-    geom_point(size = 2, fill = "gray15", col = "white", pch = 21) +
+    geom_point(size = 2, col = "gray15") +
     # coord_cartesian(xlim = c(0, 0.1),
     #                 ylim = c(-0.06, 0.06)) +
     # scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
@@ -419,19 +414,19 @@ plot_pleio <- function(p_df, s_df, source = NULL) {
 
 
 main <- function(arguments) {
-  
+
   fit_df <- read.table(arguments$fitness_file,
                        sep = ",",
                        header = TRUE,
                        stringsAsFactors = FALSE)
-  
+
   pleio_df <- read.table(arguments$pleiotropy_file,
                          sep = ",",
                          header = TRUE,
                          stringsAsFactors = FALSE)
-  
+
   # bfa_prfx <- strsplit(basename(arguments$fitness_file), "_")[[1]][1]
-  
+
   strsplit(basename(arguments$fitness_file), "_")[[1]][1:2] %>% 
     paste0(collapse = "_") ->
     bfa_basename
@@ -470,12 +465,43 @@ main <- function(arguments) {
       ggplot2::ggsave(filename = paste0(fig_out_base, "mu_v_sigma_plot.pdf"),
                       device = "pdf",
                       width = 4, height = 2.25, units = "in")
+
+    ## PNGs
+    pleio_df %>%
+      plot_means_by_source(hBFA = TRUE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.png"),
+                      device = "png",
+                      width = 4, height = 2.25, units = "in", dpi = 300)
+    pleio_df %>%
+      plot_sigma_by_source(hBFA = TRUE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_v_sigma_plot.png"),
+                      device = "png",
+                      width = 4, height = 2.25, units = "in", dpi = 300)
   } else {
     pleio_df %>%
       plot_means_by_source(hBFA = FALSE) %>%
       ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.pdf"),
                       device = "pdf",
                       width = 4, height = 10, units = "in")
+
+    pleio_df %>%
+      plot_sigma_by_source(hBFA = FALSE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_v_sigma_plot.pdf"),
+                      device = "pdf",
+                      width = 4, height = 8, units = "in")
+
+    ## PNGs
+    pleio_df %>%
+      plot_means_by_source(hBFA = FALSE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.png"),
+                      device = "png",
+                      width = 4, height = 10, units = "in", dpi = 300)
+
+    pleio_df %>%
+      plot_sigma_by_source(hBFA = FALSE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_v_sigma_plot.png"),
+                      device = "png",
+                      width = 4, height = 8, units = "in", dpi = 300)
   }
   
   # pleio plots by source
@@ -485,10 +511,10 @@ main <- function(arguments) {
                             s_df = fit_df)
   
   plot_filename_1 <- file.path(paste0(fig_out_base,
-                                      "clusts_plot.pdf"))
+                                      "clusts_plot"))
   
   plot_filename_2 <- file.path(paste0(fig_out_base, 
-                                      "pleio_plot.pdf"))
+                                      "pleio_plot"))
 
   # set plot params
   if (grepl("hBFA", bfa_basename)) {
@@ -503,37 +529,33 @@ main <- function(arguments) {
     pheight_2 = 9
   }
 
-  if (arguments$png == FALSE) {
-    pleio_plots[[1]] %>%
-      ggplot2::ggsave(filename = plot_filename_1,
-                      device = "pdf",
-                      width = pwidth_1,
-                      height = pheight_1
-      )
+  pleio_plots[[1]] %>%
+    ggplot2::ggsave(filename = paste0(plot_filename_1, ".pdf"),
+                    device = "pdf",
+                    width = pwidth_1,
+                    height = pheight_1
+    )
+  pleio_plots[[2]] %>%
+    ggplot2::ggsave(filename = paste0(plot_filename_2, ".pdf"),
+                    device = "pdf",
+                    width = pwidth_2,
+                    height = pheight_2
+    )
 
-    pleio_plots[[2]] %>%
-      ggplot2::ggsave(filename = plot_filename_2,
-                      device = "pdf",
-                      width = pwidth_2,
-                      height = pheight_2
-      )
-  } else {
-    pleio_plots[[1]] %>%
-      ggplot2::ggsave(filename = plot_filename_1,
-                      device = "png", dpi = 300,
-                      width = pwidth_1,
-                      height = pheight_1
-      )
-
-    pleio_plots[[2]] %>%
-      ggplot2::ggsave(filename = plot_filename_2,
-                      device = "png", dpi = 300,
-                      width = pwidth_2,
-                      height = pheight_2
-      )
-  }
+  ## PNGs
+  pleio_plots[[1]] %>%
+    ggplot2::ggsave(filename = paste0(plot_filename_1, ".png"),
+                    device = "png", dpi = 300,
+                    width = pwidth_1,
+                    height = pheight_1
+    )
+  pleio_plots[[2]] %>%
+    ggplot2::ggsave(filename = paste0(plot_filename_2, ".png"),
+                    device = "png", dpi = 300,
+                    width = pwidth_2,
+                    height = pheight_2
+    )
 }
-
 
 "plot_by_cluster.R
 
@@ -550,10 +572,11 @@ Arguments:
     pleiotropy_file               pleiotropy summary file (output 2 from summarise_clusters.R)
 " -> doc
 
+
 # define default args for debug_status == TRUE
 args <- list(
-  fitness_file = "output/tables/hBFA1_cutoff-5_cluster_summaries_plot-data.csv",
-  pleiotropy_file = "output/tables/hBFA1_cutoff-5_cluster_summaries_table.csv",
+  fitness_file = "output/tables/dBFA2_cutoff-5_cluster_summaries_plot-data.csv",
+  pleiotropy_file = "output/tables/dBFA2_cutoff-5_cluster_summaries_table.csv",
   outdir = "output/figures",
   png = FALSE
 )
