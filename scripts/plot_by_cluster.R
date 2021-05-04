@@ -135,6 +135,84 @@ plot_means_by_source <- function(df, hBFA = FALSE) {
 }
 
 
+plot_sigma_by_source <- function(df, hBFA = FALSE) {
+  
+  source_order <- c("YPD", "SC",
+                    "21C", "37C",
+                    "pH3_8", "pH7_3",
+                    "GlyEtOH","02M_NaCl",
+                    "FLC4", "CLM")
+  
+  df$source <- factor(df$source, levels = source_order)
+  
+  if (hBFA == FALSE) {
+    df %>%
+      dplyr::filter(!source %in% c("FLC4", "CLM")) ->
+      df_for_plot
+  } else {
+    df %>%
+      dplyr::filter(!source %in% c("CLM")) ->
+      df_for_plot
+  }
+  
+  df_for_plot %>%
+    ggplot(aes(x = wmu_x_home, y = wsd_away)) +
+    facet_wrap(~ source, ncol = 2) +
+    geom_hline(yintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+    geom_vline(xintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+    geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
+                       xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
+    geom_point(size = 2, fill = "gray15", col = "white", pch = 21) +
+    # coord_cartesian(xlim = c(0, 0.1),
+    #                 ylim = c(-0.06, 0.06)) +
+    # scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
+    # scale_x_continuous(breaks = seq(0, 0.1, 0.02)) +
+    theme_plt() +
+    #xlab("home fitness") +
+    xlab("") +
+    ylab("sigma(away fitness)") +
+    geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
+                     fill = NA,
+                     size = 3,
+                     color = "gray40") ->
+    sigma_plot_no_drug
+  
+  if (hBFA == TRUE) {
+    sigma_plot <- sigma_plot_no_drug + xlab("home fitness")
+  } else {
+    df %>%
+      dplyr::filter(source %in% c("FLC4", "CLM")) %>%
+      ggplot(aes(x = wmu_x_home, y = wmu_x_away)) +
+      facet_wrap(~ source, ncol = 2) +
+      geom_hline(yintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+      geom_vline(xintercept = 0, lwd = 0.5, linetype = "solid", color = "gray80") +
+      geom_errorbar(aes(ymin = wmu_x_away - wse_away,
+                        ymax = wmu_x_away + wse_away), col = "gray15", width = 0) +
+      geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
+                         xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
+      geom_point(size = 2, col = "gray15") +
+      coord_cartesian(xlim = c(0, 0.8),
+                      ylim = c(-0.06, 0.06)) +
+      scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
+      scale_x_continuous(breaks = seq(0, 0.8, 0.2)) +
+      theme_plt() +
+      xlab("home fitness") +
+      ylab("") +
+      geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
+                       fill = NA,
+                       size = 3,
+                       color = "gray40") ->
+      sigma_plot_drug
+    
+    sigma_plot <- ggpubr::ggarrange(plotlist = list(sigma_plot_no_drug, sigma_plot_drug),
+                                    nrow = 2, align = 'v',
+                                    heights = c(1, 0.31))
+  }
+  return(sigma_plot)
+}
+
+
+
 plot_cluster_by_source <- function(df, source = "GlyEtOH", resamples = 100) {
   
   df %>%
@@ -183,7 +261,6 @@ plot_cluster_by_source <- function(df, source = "GlyEtOH", resamples = 100) {
           #panel.grid = element_blank(),
           axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
     facet_wrap(~ cluster, nrow = length(unique(df_resampled$cluster)))
-  
 }
 
 
@@ -388,6 +465,11 @@ main <- function(arguments) {
       ggplot2::ggsave(filename = paste0(fig_out_base, "mu_plot.pdf"),
                       device = "pdf",
                       width = 4, height = 2.25, units = "in")
+    pleio_df %>%
+      plot_sigma_by_source(hBFA = TRUE) %>%
+      ggplot2::ggsave(filename = paste0(fig_out_base, "mu_v_sigma_plot.pdf"),
+                      device = "pdf",
+                      width = 4, height = 2.25, units = "in")
   } else {
     pleio_df %>%
       plot_means_by_source(hBFA = FALSE) %>%
@@ -407,7 +489,7 @@ main <- function(arguments) {
   
   plot_filename_2 <- file.path(paste0(fig_out_base, 
                                       "pleio_plot.pdf"))
-  
+
   # set plot params
   if (grepl("hBFA", bfa_basename)) {
     pwidth_1 = 6
@@ -420,7 +502,7 @@ main <- function(arguments) {
     pwidth_2 = 4
     pheight_2 = 9
   }
-  
+
   if (arguments$png == FALSE) {
     pleio_plots[[1]] %>%
       ggplot2::ggsave(filename = plot_filename_1,
@@ -428,7 +510,7 @@ main <- function(arguments) {
                       width = pwidth_1,
                       height = pheight_1
       )
-    
+
     pleio_plots[[2]] %>%
       ggplot2::ggsave(filename = plot_filename_2,
                       device = "pdf",
@@ -442,7 +524,7 @@ main <- function(arguments) {
                       width = pwidth_1,
                       height = pheight_1
       )
-    
+
     pleio_plots[[2]] %>%
       ggplot2::ggsave(filename = plot_filename_2,
                       device = "png", dpi = 300,

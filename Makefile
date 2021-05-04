@@ -44,7 +44,7 @@ fig_deps += $(FIGDIR)/dendro_by_bc_source.pdf
 figs: $(fig_deps)
 
 $(FIGDIR)/heatmap_by_bc_plot.pdf $(FIGDIR)/heatmap_with_muts.pdf $(FIGDIR)/dendro_by_bc_ploidy.pdf $(FIGDIR)/dendro_by_bc_source.pdf:
-	Rscript scripts/plot_bc_dendro.R \
+	Rscript scripts/plot_by_bc.R \
 		"data/combined/hBFA1_cutoff-5_compiled_data_by_barcode.csv data/combined/dBFA2_cutoff-5_compiled_data_by_barcode.csv" \
 		"data/mutation_data/mutations_by_bc.csv" \
 		-o $(FIGDIR)
