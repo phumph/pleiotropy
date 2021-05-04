@@ -158,12 +158,7 @@ plot_sigma_by_source <- function(df, hBFA = FALSE) {
     geom_errorbarh(aes(xmin = wmu_x_home - wse_home, 
                        xmax = wmu_x_home + wse_home), col = "gray15", height = 0) +
     geom_point(size = 2, col = "gray15") +
-    # coord_cartesian(xlim = c(0, 0.1),
-    #                 ylim = c(-0.06, 0.06)) +
-    # scale_y_continuous(breaks = seq(-0.06, 0.06, 0.02)) +
-    # scale_x_continuous(breaks = seq(0, 0.1, 0.02)) +
     theme_plt() +
-    #xlab("home fitness") +
     xlab("") +
     ylab("sigma(away fitness)") +
     geom_label_repel(aes(label = cluster), label.size = NA, box.padding = 0,
