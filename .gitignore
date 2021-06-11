@@ -10,6 +10,4 @@ data/_obs/
 packrat/lib*/
 data/mutations/
 data/fitness_data/_obs/
-
-.DS_Store
 site/
