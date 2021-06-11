@@ -11,8 +11,10 @@ serve:
 	mkdocs serve
 
 ###
-### VARIABLES
+### ANALYSIS
 ###
+
+# VARIABLES
 
 hBFA_S_FILE=data/fitness_data/fitness_estimation/hBFA1_s_03_23_18_GC_cutoff_5.csv
 dBFA_S_FILE=data/fitness_data/fitness_estimation/dBFA2_s_03_23_18_GC_cutoff_5.csv

@@ -88,7 +88,6 @@ main <- function(arguments) {
   
   bfa_prfx <- strsplit(basename(arguments$input_file), "_")[[1]][1]
   
-  # fx these outputs
   source_summaries$source_summary %>%
     write_out(out_dir = file.path(arguments$outdir, "tables"),
               base_name = basename(arguments$input_file),

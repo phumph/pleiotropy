@@ -127,7 +127,7 @@ args <- list(
   fitness_file = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapteds_autodips.csv",
   cluster_file = "data/fitness_data/fitness_calls/hBFA1_cutoff-5_adapted_w_clusts.csv",
   mutations_file = "data/mutation_data/mutations_by_bc.csv",
-  outdir = "data/compiled",
+  outdir = "data/combined",
   gens = "8",
   exclude = "X48Hr"
 )
