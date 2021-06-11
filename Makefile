@@ -5,7 +5,7 @@
 
 site:
 	cp output/figures/*.png docs/img/
-	mkdocs build docs
+	mkdocs gh-deploy
 
 serve:
 	mkdocs serve
