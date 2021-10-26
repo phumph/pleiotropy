@@ -1,4 +1,4 @@
-site_name: PLT
+site_name: Pleiotropy Lineage Tracking (PLT) project
 use_directory_urls: false
 theme:
   name: material
@@ -24,7 +24,7 @@ extra_javascript:
 plugins:
   - search
   - bibtex:
-      bib_file: bibliography.bib
+      bib_file: manuscript/bibliography.bib
       cite_style: "plain"
       csl_file: harvard.csl
       bib_command: \bibliography
