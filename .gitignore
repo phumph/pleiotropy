@@ -11,3 +11,4 @@ packrat/lib*/
 analysis/data/mutations/
 analysis/data/fitness_data/_obs/
 site/
+renv/
